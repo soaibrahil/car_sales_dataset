@@ -1,0 +1,7 @@
+RaceCode,RaceDisplay,RaceSystem,RaceText
+2054-5,Black or African American,urn:oid:2.16.840.1.113883.6.238,Black or African American
+2106-3,White,urn:oid:2.16.840.1.113883.6.238,White
+1002-5,American Indian or Alaska Native,urn:oid:2.16.840.1.113883.6.238,American Indian or Alaska Native
+UNK,Unknown,http://terminology.hl7.org/CodeSystem/v3-NullFlavor,Other
+2076-8,Native Hawaiian or Other Pacific Islander,urn:oid:2.16.840.1.113883.6.238,Native Hawaiian or Other Pacific Islander
+2028-9,Asian,urn:oid:2.16.840.1.113883.6.238,Asian

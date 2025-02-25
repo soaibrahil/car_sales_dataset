@@ -1,0 +1,5 @@
+MaritalStatusCode,MaritalStatusSystem,MaritalStatusDisplay,MaritalStatusText
+W,http://terminology.hl7.org/CodeSystem/v3-MaritalStatus,Widowed,Widowed
+S,http://terminology.hl7.org/CodeSystem/v3-MaritalStatus,Never Married,Never Married
+D,http://terminology.hl7.org/CodeSystem/v3-MaritalStatus,Divorced,Divorced
+M,http://terminology.hl7.org/CodeSystem/v3-MaritalStatus,Married,Married
