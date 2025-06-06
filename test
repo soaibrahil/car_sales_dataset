@@ -11,7 +11,7 @@ $jobs = Get-DbaAgentJob -SqlInstance HHSSVRPTSQLP001 -SqlCredential rptsqlp001_a
 
 # Export each job script separately
 foreach ($job in $jobs) {
-    $safeName = $job.Name.Replace(" ", "_").Replace("/", "_").Replace("\", "_")
+    $safeName = $job.Name.Replace(" ", "_").Replace("/", "_").Replace("\", "_").Replace(":", "_")
     $filePath = Join-Path $outputDir "$safeName.sql"
     
     Export-DbaScript -InputObject $job -FilePath $filePath
