@@ -1,19 +1,7 @@
-# Set the output directory
-$outputDir = "C:\Users\chetan.chandrashekar\Documents\Test"
-
-# Create the directory if it doesn't exist
-if (!(Test-Path $outputDir)) {
-    New-Item -ItemType Directory -Path $outputDir | Out-Null
-}
-
-# Get the list of jobs
-$jobs = Get-DbaAgentJob -SqlInstance HHSSVRPTSQLP001 -SqlCredential rptsqlp001_agent
-
-# Export each job script separately
-foreach ($job in $jobs) {
-    $safeName = $job.Name.Replace(" ", "_").Replace("/", "_").Replace("\", "_").Replace(":", "_")
-    $filePath = Join-Path $outputDir "$safeName.sql"
-    
-    Export-DbaScript -InputObject $job -FilePath $filePath
-    Write-Output "Saved: $filePath"
-}
+[Supplemental_Stage].dbo.SSIS_PACKAGE_CONFIG_TBL
+[Supplemental_Stage].dbo.SSIS_PACKAGE_CONFIG_TBL_AUDIT
+[Supplemental_Stage].dbo.PARAMETER_CONFIG_TBL
+[Supplemental_Stage].dbo.PARAMETER_CONFIG_TBL_AUDIT
+[Supplemental_Stage].RawReporting.ScheduledExtracts
+[Supplemental_Stage].RawReporting.ETL_BCH_Job_Stats
+[Supplemental_Stage].RawReporting.EtlErrorLog
