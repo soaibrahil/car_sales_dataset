@@ -1,5 +1,5 @@
 # Set the target directory
-$folderPath = "C:\User\soa93245\OneDrive - M Health Fairview\314e\Monthly\ServiceLine Month End Summaries & Rollup\2025-05"
+$folderPath = "C:\User\soa93245\Downloads\2025-05"
 
 # Get all files in the directory
 Get-ChildItem -Path $folderPath -File | ForEach-Object {
