@@ -1,7 +1,13 @@
-[Supplemental_Stage].dbo.SSIS_PACKAGE_CONFIG_TBL
-[Supplemental_Stage].dbo.SSIS_PACKAGE_CONFIG_TBL_AUDIT
-[Supplemental_Stage].dbo.PARAMETER_CONFIG_TBL
-[Supplemental_Stage].dbo.PARAMETER_CONFIG_TBL_AUDIT
-[Supplemental_Stage].RawReporting.ScheduledExtracts
-[Supplemental_Stage].RawReporting.ETL_BCH_Job_Stats
-[Supplemental_Stage].RawReporting.EtlErrorLog
+# Set the target directory
+$folderPath = "C:\User\soa93245\OneDrive - M Health Fairview\314e\Monthly\ServiceLine Month End Summaries & Rollup\2025-05"
+
+# Get all files in the directory
+Get-ChildItem -Path $folderPath -File | ForEach-Object {
+    $oldName = $_.Name
+    $newName = $oldName -replace '2025_04', '2025_05'
+
+    if ($oldName -ne $newName) {
+        Rename-Item -Path $_.FullName -NewName $newName
+        Write-Output "Renamed: $oldName -> $newName"
+    }
+}
