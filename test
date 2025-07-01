@@ -1,14 +1,32 @@
-QIP Meeting	2667	1.00	6/16/2025	QIP weekly meeting, discussion on the QIP measures
-Healthlink Change Meeting	2667	1.00	6/16/2025	Healthlink Change Meeting
-Infrastructure Meeting	2667	0.50	6/16/2025	Infrastructure Meeting
-Job Monitoring and  Job Ran Analysis	2667	6.00	6/16/2025	Monitor the executions after the latest package deployment and analysing past rans
-Code Optimization	2667	6.00	6/17/2025	Code optimization
-Triage Call	2667	1.00	6/17/2025	Triage calls
-Bi-Weekly Technical Meeting	2667	1.00	6/17/2025	Bi-Weekly Technical Meeting
-Healthlink Change Meeting	2667	1.00	6/18/2025	Healthlink Change Meeting
-Claim File and Claim Table Analysis	2667	5.00	6/18/2025	Analysing data and comparing the Claim Fact table to Claim Files
-Triage Call	2667	1.00	6/18/2025	Triage calls
-Triage Call	2667	1.00	6/20/2025	Triage calls
-Claim File and Claim Table Analysis	2667	5.00	6/20/2025	Analysing data and comparing the Claim Fact table to Claim Files
-Admin tasks	2667	1.00	6/20/2025	Weekly admin tasks
-Job Monitoring	2667	1.50	6/20/2025	Monitor the executions after the latest changes
+DECLARE @filename VARCHAR(100) = 'mydata';
+DECLARE @filepath VARCHAR(260) = 'C:\Data\mydata.csv';
+
+DECLARE @sql NVARCHAR(MAX) = '
+INSERT INTO dbo.YourTargetTable (
+  Person ID,
+  Member Number,
+  Adjustment Type Code,
+  Adjustment Sequence,
+  Relationship Code Set,
+  Relationship Code,
+  Coverage Effective Date,
+  Coverage Terminate Date,
+  Group Number
+)
+SELECT CAST(Person ID AS INT),
+  CAST(Member Number AS INT),
+  Adjustment Type Code,
+  Adjustment Sequence,
+  Relationship Code Set,
+  Relationship Code,
+  Coverage Effective Date,
+  Coverage Terminate Date,
+  Group Number
+  ''' + @filename + '''  AS Source
+FROM OPENROWSET(
+    BULK ''' + @filepath + ''',
+    FORMAT=''CSV'', FIRSTROW=2
+) AS DataFile;
+';
+
+EXEC sp_executesql @sql;
