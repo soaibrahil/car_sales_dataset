@@ -1,19 +1,35 @@
-QIP Meeting	2667	1.00	7/7/2025	QIP weekly meeting, discussion on the QIP measures
-Healthlink Change Meeting	2667	1.00	7/7/2025	Healthlink Change Meeting
-Sleep study bug fix	2667	4.00	7/7/2025	
-Infrastructure Meeting	2667	1.00	7/7/2025	Infrastructure Meeting
-Claim Files Analysis	2667	1.00	7/7/2025	Analysis and comparing claim data in files and in tables.
-Code Optimization	2667	2.00	7/8/2025	Code optimization
-CMQCC Rerun	2667	3.00	7/8/2025	
-CMQCC Supplemnetal fil Rerun	2667	3.00	7/8/2025	
-Vituity Monthly	2667	4.00	7/9/2025	QIP weekly meeting, discussion on the QIP measures
-Healthlink Change Meeting	2667	1.00	7/9/2025	Healthlink Change Meeting
-Analytics Team Meeting	2667	1.00	7/9/2025	Analytics Team Meeting
-Code Optimization	2667	2.00	7/9/2025	Code Optimization
-Triage Call	2667	1.00	7/10/2025	Triage calls
-Behavioral Health Claims	2667	4.00	7/10/2025	
-Testing and Adding New Extracts to SSIS package 	2667	3.00	7/10/2025	Source and Table Data Analysis for Demographics and Eligibility Data
-Admin tasks	2667	2.00	7/11/2025	Triage calls
-Triage Call	2667	1.00	7/11/2025	Triage calls
-Job Run Analysis	2667	2.00	7/11/2025	Monitor the executions after the latest package deployment and analysing past rans
-Code Optimization	2667	3.00	7/11/2025	Code Optimization
+QIP_BHClaim Table			QIP_BH_Data_OSIT			QIP_AvatarServices			QIP_BHSD_Supplemental_OSIT	
+Columns			Columns			Columns			Columns	
+Measure ID			Measure ID			patient_name_first			Measure ID	
+ReportDate 			ReportDate 			patient_name_last			ReportDate 	
+PatientID			PatientID			date_of_birth			PatientID	
+MRN			PatientLastName			patient_ssn			MRN	
+D_QualifyingCSN			PatientFirstName			PATID			D_QualifyingCSN	
+D_QualifyingDate			DOB			program_code			D_QualifyingDate	
+SERVICE_CODE			MRN			SERVICE_CODE			SERVICE_CODE	
+PROVIDER_ID			D_QualifyingDate			PROVIDER_ID			PROVIDER_ID	
+v_service_value			D_QualifyingCSN			pragram_value			v_service_value	
+v_PROVIDER_NAME			D_Enc_CodeDesc			v_service_value			v_PROVIDER_NAME	
+discipline_value			D_Dx_Code			v_PROVIDER_NAME			discipline_value	
+date_of_service			D_Dx_CodeDesc			discipline_value			date_of_service	
+PalaceOfService			D_Dx_Type			date_of_service			PalaceOfService	
+medical_diag_1_icd10_code			D_DepartmentName			PlaceOfService			medical_diag_1_icd10_code	
+medical_diag_1_icd10_value			ClientListDate			program_X_RRG_value			medical_diag_1_icd10_value	
+_createOnOnInstant			BHPATID			medical_diag_1_icd10_code			_createOnOnInstant	
+			patient_name_first			medical_diag_1_icd10_value				
+			patient_name_last							
+			date_of_birth							
+			patient_ssn							
+			PATID							
+			program_code							
+			SERVICE_CODE							
+			PROVIDER_ID							
+			program_value							
+			v_service_value							
+			v_PROVIDER_NAME							
+			discipline_value							
+			date_of_service							
+			PlaceOfService							
+			program_X_RPG_value							
+			medical_diag_1_icd10_code							
+			medical_diag_1_icd10_value							
