@@ -1,35 +1,35 @@
-QIP_BHClaim Table			QIP_BH_Data_OSIT			QIP_AvatarServices			QIP_BHSD_Supplemental_OSIT	
-Columns			Columns			Columns			Columns	
-Measure ID			Measure ID			patient_name_first			Measure ID	
-ReportDate 			ReportDate 			patient_name_last			ReportDate 	
-PatientID			PatientID			date_of_birth			PatientID	
-MRN			PatientLastName			patient_ssn			MRN	
-D_QualifyingCSN			PatientFirstName			PATID			D_QualifyingCSN	
-D_QualifyingDate			DOB			program_code			D_QualifyingDate	
-SERVICE_CODE			MRN			SERVICE_CODE			SERVICE_CODE	
-PROVIDER_ID			D_QualifyingDate			PROVIDER_ID			PROVIDER_ID	
-v_service_value			D_QualifyingCSN			pragram_value			v_service_value	
-v_PROVIDER_NAME			D_Enc_CodeDesc			v_service_value			v_PROVIDER_NAME	
-discipline_value			D_Dx_Code			v_PROVIDER_NAME			discipline_value	
-date_of_service			D_Dx_CodeDesc			discipline_value			date_of_service	
-PalaceOfService			D_Dx_Type			date_of_service			PalaceOfService	
-medical_diag_1_icd10_code			D_DepartmentName			PlaceOfService			medical_diag_1_icd10_code	
-medical_diag_1_icd10_value			ClientListDate			program_X_RRG_value			medical_diag_1_icd10_value	
-_createOnOnInstant			BHPATID			medical_diag_1_icd10_code			_createOnOnInstant	
-			patient_name_first			medical_diag_1_icd10_value				
-			patient_name_last							
-			date_of_birth							
-			patient_ssn							
-			PATID							
-			program_code							
-			SERVICE_CODE							
-			PROVIDER_ID							
-			program_value							
-			v_service_value							
-			v_PROVIDER_NAME							
-			discipline_value							
-			date_of_service							
-			PlaceOfService							
-			program_X_RPG_value							
-			medical_diag_1_icd10_code							
-			medical_diag_1_icd10_value							
+QIP_BH_Data_OSIT		QIP_BHClaim Table
+Columns		Columns
+Measure ID		Measure ID
+ReportDate 		ReportDate 
+PatientID		PatientID
+PatientLastName		
+PatientFirstName		
+DOB		
+MRN		MRN
+D_QualifyingDate		D_QualifyingDate
+D_QualifyingCSN		D_QualifyingCSN
+D_Enc_CodeDesc		
+D_Dx_Code		
+D_Dx_CodeDesc		
+D_Dx_Type		
+D_DepartmentName		
+ClientListDate		
+BHPATID		
+patient_name_first		
+patient_name_last		
+date_of_birth		
+patient_ssn		
+PATID		
+program_code		
+SERVICE_CODE		SERVICE_CODE
+PROVIDER_ID		PROVIDER_ID
+program_value		
+v_service_value		v_service_value
+v_PROVIDER_NAME		v_PROVIDER_NAME
+discipline_value		discipline_value
+date_of_service		date_of_service
+PlaceOfService		PalaceOfService
+program_X_RPG_value		
+medical_diag_1_icd10_code		medical_diag_1_icd10_code
+medical_diag_1_icd10_value		medical_diag_1_icd10_value
