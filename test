@@ -1,35 +1,18 @@
-QIP_BH_Data_OSIT		QIP_BHClaim Table
-Columns		Columns
-Measure ID		Measure ID
-ReportDate 		ReportDate 
-PatientID		PatientID
-PatientLastName		
-PatientFirstName		
-DOB		
-MRN		MRN
-D_QualifyingDate		D_QualifyingDate
-D_QualifyingCSN		D_QualifyingCSN
-D_Enc_CodeDesc		
-D_Dx_Code		
-D_Dx_CodeDesc		
-D_Dx_Type		
-D_DepartmentName		
-ClientListDate		
-BHPATID		
-patient_name_first		
-patient_name_last		
-date_of_birth		
-patient_ssn		
-PATID		
-program_code		
-SERVICE_CODE		SERVICE_CODE
-PROVIDER_ID		PROVIDER_ID
-program_value		
-v_service_value		v_service_value
-v_PROVIDER_NAME		v_PROVIDER_NAME
-discipline_value		discipline_value
-date_of_service		date_of_service
-PlaceOfService		PalaceOfService
-program_X_RPG_value		
-medical_diag_1_icd10_code		medical_diag_1_icd10_code
-medical_diag_1_icd10_value		medical_diag_1_icd10_value
+QIP Meeting	2667	1.00	7/14/2025	QIP weekly meeting, discussion on the QIP measures
+Healthlink Change Meeting	2667	1.00	7/14/2025	Healthlink Change Meeting
+Infrastructure Meeting	2667	1.00	7/14/2025	Infrastructure Meeting
+Monthly Analysis Architecture Meeting	2667	1.00	7/14/2025	Monthly Analysis Architecture Meeting
+Code Optimization	2667	4.00	7/14/2025	Code Optimization
+Triage Call	2667	1.00	7/15/2025	Triage calls
+QIP file load and comparison with existing QIP tables	2667	4.00	7/15/2025	Loading data from qip files into table and comparing it with existing qip tables
+Mapping between QIP file and QIP tables	2667	3.00	7/15/2025	Column mapping between the qip file and qip tables
+QIP table analysis 	2667	5.00	7/16/2025	QIP weekly meeting, discussion on the QIP measures
+Healthlink Change Meeting	2667	1.00	7/16/2025	Healthlink Change Meeting
+Code Optimization	2667	2.00	7/16/2025	Code Optimization
+Triage Call	2667	1.00	7/17/2025	Triage calls
+Code Optimization	2667	3.00	7/17/2025	Code Optimization
+SSIS FrameWork Bug Fixing	2667	4.00	7/17/2025	SSIS FrameWork Bug Fixing
+Admin tasks	2667	2.00	7/18/2025	Triage calls
+Triage Call	2667	1.00	7/18/2025	Triage calls
+Job Run Analysis	2667	2.00	7/18/2025	Monitor the executions after the latest package deployment and analysing past rans
+Code Optimization	2667	3.00	7/18/2025	Code Optimization
