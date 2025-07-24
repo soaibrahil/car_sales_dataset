@@ -2,17 +2,13 @@ QIP Meeting	2667	1.00	7/14/2025	QIP weekly meeting, discussion on the QIP measur
 Healthlink Change Meeting	2667	1.00	7/14/2025	Healthlink Change Meeting
 Infrastructure Meeting	2667	1.00	7/14/2025	Infrastructure Meeting
 Monthly Analysis Architecture Meeting	2667	1.00	7/14/2025	Monthly Analysis Architecture Meeting
-Code Optimization	2667	4.00	7/14/2025	Code Optimization
+Updated SP QIP_OtherInsuranceInfo_SP  for 'Anthem'	2667	4.00	7/14/2025	Drafted a SP making changes to QIP_OtherInsuranceInfo_SP.
 Triage Call	2667	1.00	7/15/2025	Triage calls
-QIP file load and comparison with existing QIP tables	2667	4.00	7/15/2025	Loading data from qip files into table and comparing it with existing qip tables
-Mapping between QIP file and QIP tables	2667	3.00	7/15/2025	Column mapping between the qip file and qip tables
+Doing Analysis  on table QIP_BlueCrossOtherInsurance_OSIT and comapring it to QIP_OtherInsuranceInfo	2667	6.00	7/15/2025	Doing Analysis  on table QIP_BlueCrossOtherInsurance_OSIT and comapring it to QIP_OtherInsuranceInfo
+SSIS FrameWork Prod And Test Sync	2667	1.00	7/15/2025	SSIS FrameWork Prod And Test Sync
 QIP table analysis 	2667	5.00	7/16/2025	QIP weekly meeting, discussion on the QIP measures
 Healthlink Change Meeting	2667	1.00	7/16/2025	Healthlink Change Meeting
 Code Optimization	2667	2.00	7/16/2025	Code Optimization
 Triage Call	2667	1.00	7/17/2025	Triage calls
 Code Optimization	2667	3.00	7/17/2025	Code Optimization
 SSIS FrameWork Bug Fixing	2667	4.00	7/17/2025	SSIS FrameWork Bug Fixing
-Admin tasks	2667	2.00	7/18/2025	Triage calls
-Triage Call	2667	1.00	7/18/2025	Triage calls
-Job Run Analysis	2667	2.00	7/18/2025	Monitor the executions after the latest package deployment and analysing past rans
-Code Optimization	2667	3.00	7/18/2025	Code Optimization
