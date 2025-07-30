@@ -1,21 +1,9 @@
-# List of locations to check — replace with a way to read from SQL if needed
-$locations = @(
-    "C:\sftp_out\autotest\lab\insight\folder1",
-    "C:\sftp_out\autotest\lab\insight\folder2",
-    "C:\sftp_out\autotest\lab\insight\folder3"
-)
-
-foreach ($path in $locations) {
-    if (-Not (Test-Path $path)) {
-        try {
-            New-Item -Path $path -ItemType Directory -Force | Out-Null
-            Write-Output "Created: $path"
-        }
-        catch {
-            Write-Error "Failed to create $path. Error: $_"
-        }
-    }
-    else {
-        Write-Output "Exists: $path"
-    }
-}
+QIP Meeting	2667	1.00	7/28/2025	QIP weekly meeting, discussion on the QIP measures
+Healthlink Change Meeting	2667	1.00	7/28/2025	Healthlink Change Meeting
+Infrastructure Meeting	2667	1.00	7/28/2025	Infrastructure Meeting
+Validating Eligibilty Data from tables against the files 	2667	5.00	7/28/2025	Validating Eligibilty Data from tables against the files 
+Creating new job & schedule for SSIS WireFrame definition	2667	6.00	7/29/2025	Creating a new job and schedule for a new defination using SSIS WireFrame package
+Code Optimization	2667	2.00	7/29/2025	Doing Analysis  on table QIP_BlueCrossOtherInsurance_OSIT and comapring it to QIP_OtherInsuranceInfo
+Triage Call	2667	1.00	7/30/2025	Triage calls
+Healthlink Change Meeting	2667	1.00	7/30/2025	Healthlink Change Meeting
+Code Optimization	2667	6.00	7/30/2025	Code Optimization
