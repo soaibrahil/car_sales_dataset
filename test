@@ -1,15 +1,15 @@
-QIP Meeting	2667	2.00	10/13/2025	QIP weekly meeting, discussion on the QIP measures
-Code Optimization - Anthem Logic	2667	6.00	10/13/2025	Code Optimization - Anthem Logic
-weekly team meeting	2667	1.00	10/14/2025	weekly team meeting
-Update to SSIS packages	2667	5.00	10/14/2025	Update to SSIS packages
-Triage Call	2667	1.00	10/14/2025	Triage Call
-Analytics Team Meeting	2667	1.00	10/14/2025	Analytics Team Meeting
-Creating a query to analyze stored procedures for date parameters and date usage	2667	6.00	10/15/2025	Creating a query to analyze stored procedures for date parameters and date usage
-Analytics Team Meeting	2667	1.00	10/15/2025	Analytics Team Meeting
-Triage Call	2667	1.00	10/15/2025	Triage calls
-Code Optimization - vw_Ambulatory_F2FvTel_amb_vists-Part1	2667	4.00	10/16/2025	Code Optimization - vw_Ambulatory_F2FvTel_amb_vists-Part1
-Infrastructure Meeting	2667	2.00	10/16/2025	Infrastructure Meeting
-Triage Call	2667	2.00	10/16/2025	Triage calls
-Admin tasks	2667	2.00	10/17/2025	Triage calls
-Job Run Analysis	2667	2.00	10/17/2025	Monitor the executions after the latest package deployment and analysing past rans
-Code Optimization - vw_Ambulatory_F2FvTel_amb_vists	2667	4.00	10/17/2025	Code Optimization - vw_Ambulatory_F2FvTel_amb_vists
+QIP Weekly Meeting	2667	1.00	10/20/2025	QIP Weekly Meeting
+Code Optimization - Anthem Unpivot Logic	2667	6.00	10/20/2025	Code Optimization - Anthem Unpivot Logic
+Infrastructure Meeting	2667	1.00	10/20/2025	Infrastructure Meeting
+Stored Procedure analysis - Date parameter	2667	6.00	10/21/2025	Stored Procedure analysis - Date parameter
+Weekly Team Meeting	2667	1.00	10/21/2025	Weekly Team Meeting
+Triage Call	2667	1.00	10/21/2025	Triage calls
+Analytics Team Meeting	2667	1.00	10/22/2025	Analytics Team Meeting
+Documentation for SSIS WireFrame package	2667	4.00	10/22/2025	Documentation for SSIS WireFrame package
+Analysis Stored Procedure analysis - Date parameter	2667	3.00	10/22/2025	Analysis Stored Procedure analysis - Date parameter
+Incremental Logic Anthem Unpivot Logic	2667	5.00	10/23/2025	Incremental Logic Anthem Unpivot Logic
+Triage Call	2667	1.00	10/23/2025	Triage calls
+Caboodle CustodyAdmissionFactX review	2667	2.00	10/23/2025	Caboodle CustodyAdmissionFactX review
+Admin tasks	2667	2.00	10/24/2025	Admin tasks
+change vw_Ambulatory_F2FvsTel_amb_visit for parameter	2667	3.00	10/24/2025	change vw_Ambulatory_F2FvsTel_amb_visit for parameter
+Incremental Logic Anthem Unpivot Logic	2667	3.00	10/24/2025	Incremental Logic Anthem Unpivot Logic
