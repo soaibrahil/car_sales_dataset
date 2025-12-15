@@ -1,8 +1,18 @@
-error	error_type	reason	possible_solution
-The script returned a failure result.	Generic script failure	Stored procedure or script raised an error or returned a failure status to SSIS. Possibly due some previous failure of the job run, eg: query timeout.	Fix the error for previous task causing failure in the job.
-The query timed out.	SQL timeout	The stored procedure exceeded the command timeout, often due to long‑running queries, blocking, or large result sets.	Increase the SSIS/SQLCMD command timeout for this task, optimize the query (indexes, statistics, execution plan), and consider batching or reducing result set size.
-In executing ......., The process exit code was "1" while the expected was "0".	SQLCMD non‑zero exit code	The SQLCMD process failed due to an underlying SQL error, bad parameters, or environment/connection issues.	Capture SQLCMD stdout/stderr to a log, rerun the same command in SSMS to see the exact T‑SQL error, validate parameters, database, and server name; fix the T‑SQL or connection configuration.
-The file '<path>' already exists.	File system conflict	The export task tried to create a file that already exists and is configured to fail on existing files.	Delete the existing file manually and re-run the job.
-The remote procedure call failed. (Exception from HRESULT: 0x800706BE)	RPC failure	A remote procedure call between SSIS and a server component (SQL Server, COM/Excel, or another service) failed, commonly due to transient connectivity or server-side errors. Often the reason is some user loging into the server.	Possible Solution is to ask the user to log-out of the server and then run the job again.
-The server threw an exception. (Exception from HRESULT: 0x80010105 (RPC_E_SERVERFAULT))	Server RPC fault	A COM or inter‑process call from SSIS (often Excel automation or script components) threw a server‑side fault exception. Often the reason is some user is loging into the server.	Possible Solution is to ask the user to log-out of the server and then run the job again.
-Cannot find either column "dbo" or the user-defined function or aggregate "dbo.EFN_DIN", or the name is ambiguous.	SQL compilation error	A referenced scalar/table‑valued function or object named dbo.EFN_DIN does not exist, is in a different schema, or is referenced ambiguously.	Create the missing function, correct the schema/object name, or remove the reference; ensure the correct database context and default schema are used before running the SELECT.
+QIP Weekly Meeting	2667	1.00	12/8/2025	QIP Weekly Meeting
+Claim Incremental Table Debugging	2667	4.00	12/8/2025	Claim Incremental Table Debugging
+Infrastructure Meeting	2667	1.00	12/8/2025	Infrastructure Meeting
+Healthlink Change Meeting	2667	1.00	12/8/2025	HealthLink CAB Meeting
+Monthly Analytics Architecture Meeting	2667	1.00	12/8/2025	Monthly Analytics Architecture Meeting
+SSIS FrameWork Error Handling Documentation	2667	6.00	12/9/2025	SSIS FrameWork Error Handling Documentation
+Technical Meeting	2667	1.00	12/9/2025	Technical Meeting
+Triage Call	2667	1.00	12/9/2025	Triage calls
+Healthlink Change Meeting	2667	1.00	12/10/2025	HealthLink CAB Meeting
+Triage Call	2667	1.00	12/10/2025	Triage calls
+Code Optimization	2667	6.00	12/10/2025	Code Optimization
+Updating/Runing Claim SP to add Taxanomy Code	2667	6.00	12/11/2025	Updating/Runing Claim SP to add Taxanomy Code
+Triage Call	2667	1.00	12/11/2025	Triage calls
+Sync on ETL/Files	2667	1.00	12/11/2025	Sync on ETL/Files
+Admin tasks	2667	2.00	12/12/2025	Admin tasks
+Job Run Analysis	2667	2.00	12/12/2025	Job Run Analysis
+Code Optimization	2667	3.00	12/12/2025	Code Optimization
+Triage Call	2667	1.00	12/12/2025	Triage calls
