@@ -1,10 +1,33 @@
-Code Optimization	2667	4.00	12/30/2025	Code Optimization
-Technical Meeting	2667	1.00	12/30/2025	Technical Meeting
-Triage Call	2667	1.00	12/30/2025	Triage calls
-Healthlink Systems Reporting Meeting	2667	1.00	12/30/2025	Healthlink Systems Reporting Meeting
-Value Set	2667	1.00	12/30/2025	Value Set
-Admin tasks	2667	2.00	1/2/2026	Triage calls
-Job Run Analysis	2667	2.00	1/2/2026	Monitor the executions after the latest package deployment and analysing past rans
-Code Optimization	2667	2.00	1/2/2026	Code Optimization
-Triage Call	2667	1.00	1/2/2026	Triage calls
-Claims	2667	1.00	1/2/2026	Claims
+SELECT DISTINCT
+    OBJECT_SCHEMA_NAME(d.referenced_id) AS table_schema,
+    OBJECT_NAME(d.referenced_id) AS table_name
+FROM sys.sql_expression_dependencies d
+WHERE d.referencing_id = OBJECT_ID('dbo.YourStoredProcedureName')
+  AND d.referenced_id IS NOT NULL;
+
+
+
+SELECT DISTINCT
+    OBJECT_SCHEMA_NAME(d.referenced_id) AS table_schema,
+    OBJECT_NAME(d.referenced_id) AS table_name,
+    c.name AS column_name
+FROM sys.sql_expression_dependencies d
+JOIN sys.columns c
+    ON c.object_id = d.referenced_id
+WHERE d.referencing_id = OBJECT_ID('dbo.YourStoredProcedureName')
+  AND d.referenced_id IS NOT NULL
+ORDER BY table_name, column_name;
+
+
+
+SELECT DISTINCT
+    r.referenced_schema_name AS table_schema,
+    r.referenced_entity_name AS table_name,
+    r.referenced_minor_name AS column_name
+FROM sys.dm_sql_referenced_entities 
+(
+    'dbo.YourStoredProcedureName',
+    'OBJECT'
+) r
+WHERE r.referenced_class_desc = 'OBJECT_OR_COLUMN'
+ORDER BY table_name, column_name;
