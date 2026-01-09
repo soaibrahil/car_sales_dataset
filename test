@@ -1,33 +1,8 @@
-SELECT DISTINCT
-    OBJECT_SCHEMA_NAME(d.referenced_id) AS table_schema,
-    OBJECT_NAME(d.referenced_id) AS table_name
-FROM sys.sql_expression_dependencies d
-WHERE d.referencing_id = OBJECT_ID('dbo.YourStoredProcedureName')
-  AND d.referenced_id IS NOT NULL;
-
-
-
-SELECT DISTINCT
-    OBJECT_SCHEMA_NAME(d.referenced_id) AS table_schema,
-    OBJECT_NAME(d.referenced_id) AS table_name,
-    c.name AS column_name
-FROM sys.sql_expression_dependencies d
-JOIN sys.columns c
-    ON c.object_id = d.referenced_id
-WHERE d.referencing_id = OBJECT_ID('dbo.YourStoredProcedureName')
-  AND d.referenced_id IS NOT NULL
-ORDER BY table_name, column_name;
-
-
-
-SELECT DISTINCT
-    r.referenced_schema_name AS table_schema,
-    r.referenced_entity_name AS table_name,
-    r.referenced_minor_name AS column_name
-FROM sys.dm_sql_referenced_entities 
-(
-    'dbo.YourStoredProcedureName',
-    'OBJECT'
-) r
-WHERE r.referenced_class_desc = 'OBJECT_OR_COLUMN'
-ORDER BY table_name, column_name;
+Give a scripts which having all this senario 
+1. THE CODE CAN BE IN EITHER IN UPPER CASE OR LOWER CASE  
+2. THE TABLE CAN BE ON THE SAME LINE OR DIFFERENT LINE AFTER THE STANDARD STATEMENT (LIKE JOIN ) 
+3. THE TABLE CAN BE AFTER JOIN WITH A SINGLE SPACE OR MULTIPLE SPACES 
+4. THE TABLE CAN BE ALIASED OR NOT 
+5. THE COLUMNS CAN BE REFERENCED WITH TABLE NAME OR ALIAS NAME OR THERE MAY NOT BE ANY ALIASES 
+7. SOMETIMES TABLE CAN REFERENCED WITH FULL NAME SPACES I.E. EITHER WITH DATABASE NAME.schema_name.table_name or it can be referenced without any namespaces 
+8. THE QUERY CAN CONTAIN SUBQUERIES 
