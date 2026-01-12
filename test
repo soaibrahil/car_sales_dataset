@@ -1,8 +1,19 @@
-Give a scripts which having all this senario 
-1. THE CODE CAN BE IN EITHER IN UPPER CASE OR LOWER CASE  
-2. THE TABLE CAN BE ON THE SAME LINE OR DIFFERENT LINE AFTER THE STANDARD STATEMENT (LIKE JOIN ) 
-3. THE TABLE CAN BE AFTER JOIN WITH A SINGLE SPACE OR MULTIPLE SPACES 
-4. THE TABLE CAN BE ALIASED OR NOT 
-5. THE COLUMNS CAN BE REFERENCED WITH TABLE NAME OR ALIAS NAME OR THERE MAY NOT BE ANY ALIASES 
-7. SOMETIMES TABLE CAN REFERENCED WITH FULL NAME SPACES I.E. EITHER WITH DATABASE NAME.schema_name.table_name or it can be referenced without any namespaces 
-8. THE QUERY CAN CONTAIN SUBQUERIES 
+QIP Weekly Meeting	2667	1.00	1/5/2026	QIP Weekly Meeting
+Created template job for SP using FramWork Package	2667	3.00	1/5/2026	Created template job for SP using FramWork Package
+Infrastructure Meeting	2667	1.00	1/5/2026	Infrastructure Meeting
+Healthlink Change Meeting	2667	1.00	1/5/2026	HealthLink CAB Meeting
+QIP Valueset Loading Package Devlopment	2667	2.00	1/5/2026	QIP Valueset Loading Package Devlopment
+Script Devlopment For TableColumn Used in SP 	2667	6.00	1/6/2026	Script Devlopment For TableColumn Used in SP 
+Technical Meeting	2667	1.00	1/6/2026	Technical Meeting
+Triage Call	2667	1.00	1/6/2026	Triage calls
+Healthlink Change Meeting	2667	1.00	1/7/2026	HealthLink CAB Meeting
+Triage Call	2667	1.00	1/7/2026	Triage calls
+SSIS Package Devlopment For TableColumn Used in SP 	2667	5.00	1/7/2026	SSIS Package Devlopment For TableColumn Used in SP 
+Analytical Meeting	2667	1.00	1/7/2026	Analytical Meeting
+SSIS Package Devlopment For TableColumn Used in SP 	2667	7.00	1/8/2026	SSIS Package Devlopment For TableColumn Used in SP 
+Triage Call	2667	1.00	1/8/2026	Triage calls
+Admin tasks	2667	2.00	1/9/2026	Admin tasks
+Job Run Analysis	2667	2.00	1/9/2026	Job Run Analysis
+SSIS Package Testing For TableColumn Used in SP 	2667	2.00	1/9/2026	SSIS Package Testing For TableColumn Used in SP 
+Triage Call	2667	1.00	1/9/2026	Triage calls
+Creating Formated File for new Valueset Files	2667	1.00	1/9/2026	Creating Formated File for new Valueset Files
