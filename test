@@ -1,207 +1,104 @@
-/*========================================================
-SP 1: CTE + JOIN + CASE + WHERE
-========================================================*/
-CREATE OR ALTER PROCEDURE dbo.sp_cte_join_example
-AS
-BEGIN
-    WITH patient_cte AS (
-        SELECT
-            p.patient_id,
-            p.mrn,
-            p.dob,
-            p.gender
-        FROM dbo.patient p
-        WHERE p.is_active = 1
-    )
-    SELECT
-        c.claim_id,
-        c.patient_id,
-        p.mrn,
-        CASE 
-            WHEN c.amount > 1000 THEN 'HIGH'
-            ELSE 'LOW'
-        END AS claim_type
-    FROM dbo.claims c
-    INNER JOIN patient_cte p
-        ON c.patient_id = p.patient_id;
-END;
-GO
+using System;
+using System.IO;
+using System.Collections.Generic;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
+using Microsoft.SqlServer.Dts.Runtime;
 
+public void Main()
+{
+    string inputFile = @"C:\Temp\input_sp.txt";
+    string outputFile = @"C:\Temp\output_lineage.txt";
 
-/*========================================================
-SP 2: Temp Table + Aggregation
-========================================================*/
-CREATE OR ALTER PROCEDURE dbo.sp_temp_table_example
-AS
-BEGIN
-    CREATE TABLE #claim_summary (
-        patient_id INT,
-        total_amount DECIMAL(18,2)
+    string fullSql = File.ReadAllText(inputFile);
+
+    // Split on GO (standalone GO only)
+    string[] procedures = System.Text.RegularExpressions.Regex.Split(
+        fullSql,
+        @"^\s*GO\s*$",
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase |
+        System.Text.RegularExpressions.RegexOptions.Multiline
     );
 
-    INSERT INTO #claim_summary (patient_id, total_amount)
-    SELECT
-        patient_id,
-        SUM(amount)
-    FROM dbo.claims
-    GROUP BY patient_id;
+    var finalResults = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-    SELECT
-        p.patient_id,
-        p.mrn,
-        cs.total_amount
-    FROM #claim_summary cs
-    JOIN dbo.patient p
-        ON cs.patient_id = p.patient_id;
-END;
-GO
+    foreach (string spText in procedures)
+    {
+        if (string.IsNullOrWhiteSpace(spText))
+            continue;
 
+        IList<ParseError> errors;
+        var parser = new TSql150Parser(false);
+        var fragment = parser.Parse(new StringReader(spText), out errors);
 
-/*========================================================
-SP 3: Dynamic SQL (Hardest for lineage)
-========================================================*/
-CREATE OR ALTER PROCEDURE dbo.sp_dynamic_sql_example
-    @table_name SYSNAME
-AS
-BEGIN
-    DECLARE @sql NVARCHAR(MAX);
+        if (errors.Count > 0)
+            continue; // Skip invalid blocks safely
 
-    SET @sql = '
-        SELECT *
-        FROM ' + QUOTENAME(@table_name) + '
-        WHERE created_date >= DATEADD(DAY, -30, GETDATE())
-    ';
+        var visitor = new LineageVisitor();
+        fragment.Accept(visitor);
 
-    EXEC sp_executesql @sql;
-END;
-GO
+        foreach (var r in visitor.Results)
+            finalResults.Add(r);
+    }
+
+    File.WriteAllLines(outputFile, finalResults);
+    Dts.TaskResult = (int)ScriptResults.Success;
+}
 
 
-/*========================================================
-SP 4: SELECT * + Subquery
-========================================================*/
-CREATE OR ALTER PROCEDURE dbo.sp_select_star_example
-AS
-BEGIN
-    SELECT *
-    FROM dbo.claims c
-    WHERE c.patient_id IN (
-        SELECT p.patient_id
-        FROM dbo.patient p
-        WHERE p.gender = 'F'
-    );
-END;
-GO
 
 
-/*========================================================
-SP 5: MERGE (Source → Target)
-========================================================*/
-CREATE OR ALTER PROCEDURE dbo.sp_merge_example
-AS
-BEGIN
-    MERGE dbo.claims_target t
-    USING dbo.claims_source s
-        ON t.claim_id = s.claim_id
-    WHEN MATCHED THEN
-        UPDATE SET
-            t.amount = s.amount,
-            t.updated_date = GETDATE()
-    WHEN NOT MATCHED THEN
-        INSERT (claim_id, patient_id, amount, created_date)
-        VALUES (s.claim_id, s.patient_id, s.amount, GETDATE());
-END;
-GO
 
+using System;
+using System.Collections.Generic;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 
-/*========================================================
-SP 6: Multiple Joins + Aliases + Calculated Columns
-========================================================*/
-CREATE OR ALTER PROCEDURE dbo.sp_multi_join_example
-AS
-BEGIN
-    SELECT
-        c.claim_id,
-        p.mrn,
-        pr.npi,
-        (c.amount * 0.1) AS tax_amount,
-        c.amount + (c.amount * 0.1) AS total_amount
-    FROM dbo.claims c
-    JOIN dbo.patient p
-        ON c.patient_id = p.patient_id
-    LEFT JOIN dbo.practitioner pr
-        ON c.practitioner_id = pr.practitioner_id;
-END;
-GO
+public class LineageVisitor : TSqlFragmentVisitor
+{
+    private string currentProcedure = "UNKNOWN";
+    private Dictionary<string, string> tableAliases =
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
+    public HashSet<string> Results =
+        new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-/*========================================================
-SP 7: PIVOT
-========================================================*/
-CREATE OR ALTER PROCEDURE dbo.sp_pivot_example
-AS
-BEGIN
-    SELECT *
-    FROM (
-        SELECT
-            patient_id,
-            service_type,
-            amount
-        FROM dbo.claims
-    ) src
-    PIVOT (
-        SUM(amount)
-        FOR service_type IN ([LAB], [XRAY], [MRI])
-    ) p;
-END;
-GO
+    public override void Visit(CreateProcedureStatement node)
+    {
+        currentProcedure = node.ProcedureReference.Name.BaseIdentifier.Value;
+        tableAliases.Clear(); // VERY IMPORTANT
+        base.Visit(node);
+    }
 
+    public override void Visit(NamedTableReference node)
+    {
+        string tableName = node.SchemaObject.BaseIdentifier.Value;
 
-/*========================================================
-SP 8: UNION ALL
-========================================================*/
-CREATE OR ALTER PROCEDURE dbo.sp_union_example
-AS
-BEGIN
-    SELECT patient_id, amount, 'CLAIM' AS record_type
-    FROM dbo.claims
-    UNION ALL
-    SELECT patient_id, paid_amount, 'PAYMENT'
-    FROM dbo.payments;
-END;
-GO
+        if (node.Alias != null)
+        {
+            tableAliases[node.Alias.Value] = tableName;
+        }
+        else
+        {
+            tableAliases[tableName] = tableName;
+        }
 
+        base.Visit(node);
+    }
 
-/*========================================================
-SP 9: Scalar Function + CROSS APPLY
-========================================================*/
-CREATE OR ALTER PROCEDURE dbo.sp_cross_apply_example
-AS
-BEGIN
-    SELECT
-        c.claim_id,
-        f.calculated_value
-    FROM dbo.claims c
-    CROSS APPLY dbo.fn_calculate_value(c.amount) f;
-END;
-GO
+    public override void Visit(ColumnReferenceExpression node)
+    {
+        if (node.MultiPartIdentifier?.Identifiers.Count == 2)
+        {
+            string alias = node.MultiPartIdentifier.Identifiers[0].Value;
+            string column = node.MultiPartIdentifier.Identifiers[1].Value;
 
+            if (tableAliases.ContainsKey(alias))
+            {
+                Results.Add(
+                    $"Procedure: {currentProcedure} | Table: {tableAliases[alias]} | Column: {column}"
+                );
+            }
+        }
 
-/*========================================================
-SP 10: Nested Subqueries + EXISTS
-========================================================*/
-CREATE OR ALTER PROCEDURE dbo.sp_exists_example
-AS
-BEGIN
-    SELECT
-        p.patient_id,
-        p.mrn
-    FROM dbo.patient p
-    WHERE EXISTS (
-        SELECT 1
-        FROM dbo.claims c
-        WHERE c.patient_id = p.patient_id
-          AND c.amount > 500
-    );
-END;
-GO
+        base.Visit(node);
+    }
+}
