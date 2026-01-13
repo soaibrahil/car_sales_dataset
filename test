@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Collections.Generic;
+using System.Text;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 using Microsoft.SqlServer.Dts.Runtime;
 
@@ -11,7 +12,6 @@ public void Main()
 
     string fullSql = File.ReadAllText(inputFile);
 
-    // Split on GO (standalone GO only)
     string[] procedures = System.Text.RegularExpressions.Regex.Split(
         fullSql,
         @"^\s*GO\s*$",
@@ -19,7 +19,7 @@ public void Main()
         System.Text.RegularExpressions.RegexOptions.Multiline
     );
 
-    var finalResults = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    var finalOutput = new StringBuilder();
 
     foreach (string spText in procedures)
     {
@@ -31,22 +31,40 @@ public void Main()
         var fragment = parser.Parse(new StringReader(spText), out errors);
 
         if (errors.Count > 0)
-            continue; // Skip invalid blocks safely
+            continue;
 
         var visitor = new LineageVisitor();
         fragment.Accept(visitor);
 
-        foreach (var r in visitor.Results)
-            finalResults.Add(r);
+        if (!visitor.HasContent())
+            continue;
+
+        finalOutput.AppendLine($"Stored Procedure: {visitor.ProcedureName}");
+
+        foreach (var table in visitor.TableColumnMap)
+        {
+            finalOutput.AppendLine($"  Table: {table.Key}");
+            foreach (var col in table.Value)
+            {
+                finalOutput.AppendLine($"    - {col}");
+            }
+        }
+
+        if (visitor.UnresolvedColumns.Count > 0)
+        {
+            finalOutput.AppendLine("  Unresolved Columns:");
+            foreach (var col in visitor.UnresolvedColumns)
+            {
+                finalOutput.AppendLine($"    - {col}");
+            }
+        }
+
+        finalOutput.AppendLine();
     }
 
-    File.WriteAllLines(outputFile, finalResults);
+    File.WriteAllText(outputFile, finalOutput.ToString());
     Dts.TaskResult = (int)ScriptResults.Success;
 }
-
-
-
-
 
 using System;
 using System.Collections.Generic;
@@ -54,17 +72,21 @@ using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 public class LineageVisitor : TSqlFragmentVisitor
 {
-    private string currentProcedure = "UNKNOWN";
+    public string ProcedureName = "UNKNOWN";
+
     private Dictionary<string, string> tableAliases =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-    public HashSet<string> Results =
+    public Dictionary<string, HashSet<string>> TableColumnMap =
+        new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+
+    public HashSet<string> UnresolvedColumns =
         new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
     public override void Visit(CreateProcedureStatement node)
     {
-        currentProcedure = node.ProcedureReference.Name.BaseIdentifier.Value;
-        tableAliases.Clear(); // VERY IMPORTANT
+        ProcedureName = node.ProcedureReference.Name.BaseIdentifier.Value;
+        tableAliases.Clear();
         base.Visit(node);
     }
 
@@ -73,32 +95,48 @@ public class LineageVisitor : TSqlFragmentVisitor
         string tableName = node.SchemaObject.BaseIdentifier.Value;
 
         if (node.Alias != null)
-        {
             tableAliases[node.Alias.Value] = tableName;
-        }
         else
-        {
             tableAliases[tableName] = tableName;
-        }
+
+        if (!TableColumnMap.ContainsKey(tableName))
+            TableColumnMap[tableName] = new HashSet<string>();
 
         base.Visit(node);
     }
 
     public override void Visit(ColumnReferenceExpression node)
     {
-        if (node.MultiPartIdentifier?.Identifiers.Count == 2)
+        var identifiers = node.MultiPartIdentifier?.Identifiers;
+
+        // alias.column
+        if (identifiers != null && identifiers.Count == 2)
         {
-            string alias = node.MultiPartIdentifier.Identifiers[0].Value;
-            string column = node.MultiPartIdentifier.Identifiers[1].Value;
+            string alias = identifiers[0].Value;
+            string column = identifiers[1].Value;
 
             if (tableAliases.ContainsKey(alias))
             {
-                Results.Add(
-                    $"Procedure: {currentProcedure} | Table: {tableAliases[alias]} | Column: {column}"
-                );
+                string table = tableAliases[alias];
+                TableColumnMap[table].Add(column);
             }
+            else
+            {
+                UnresolvedColumns.Add($"{alias}.{column}");
+            }
+        }
+        // column only
+        else if (identifiers != null && identifiers.Count == 1)
+        {
+            UnresolvedColumns.Add(identifiers[0].Value);
         }
 
         base.Visit(node);
     }
+
+    public bool HasContent()
+    {
+        return TableColumnMap.Count > 0 || UnresolvedColumns.Count > 0;
+    }
 }
+
