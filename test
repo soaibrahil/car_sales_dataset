@@ -6,8 +6,8 @@ using Microsoft.SqlServer.Dts.Runtime;
 
 public void Main()
 {
-    string inputFile = @"C:\Temp\input_sp.txt";
-    string outputFile = @"C:\Temp\output_lineage.txt";
+    string inputFile = Dts.Variables["User::InputFilePath"].Value.ToString();
+    string outputFile = Dts.Variables["User::OutputFilePath"].Value.ToString();
 
     string fullSql = File.ReadAllText(inputFile);
 
