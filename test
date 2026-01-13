@@ -1,19 +1,207 @@
-QIP Weekly Meeting	2667	1.00	1/5/2026	QIP Weekly Meeting
-Created template job for SP using FramWork Package	2667	3.00	1/5/2026	Created template job for SP using FramWork Package
-Infrastructure Meeting	2667	1.00	1/5/2026	Infrastructure Meeting
-Healthlink Change Meeting	2667	1.00	1/5/2026	HealthLink CAB Meeting
-QIP Valueset Loading Package Devlopment	2667	2.00	1/5/2026	QIP Valueset Loading Package Devlopment
-Script Devlopment For TableColumn Used in SP 	2667	6.00	1/6/2026	Script Devlopment For TableColumn Used in SP 
-Technical Meeting	2667	1.00	1/6/2026	Technical Meeting
-Triage Call	2667	1.00	1/6/2026	Triage calls
-Healthlink Change Meeting	2667	1.00	1/7/2026	HealthLink CAB Meeting
-Triage Call	2667	1.00	1/7/2026	Triage calls
-SSIS Package Devlopment For TableColumn Used in SP 	2667	5.00	1/7/2026	SSIS Package Devlopment For TableColumn Used in SP 
-Analytical Meeting	2667	1.00	1/7/2026	Analytical Meeting
-SSIS Package Devlopment For TableColumn Used in SP 	2667	7.00	1/8/2026	SSIS Package Devlopment For TableColumn Used in SP 
-Triage Call	2667	1.00	1/8/2026	Triage calls
-Admin tasks	2667	2.00	1/9/2026	Admin tasks
-Job Run Analysis	2667	2.00	1/9/2026	Job Run Analysis
-SSIS Package Testing For TableColumn Used in SP 	2667	2.00	1/9/2026	SSIS Package Testing For TableColumn Used in SP 
-Triage Call	2667	1.00	1/9/2026	Triage calls
-Creating Formated File for new Valueset Files	2667	1.00	1/9/2026	Creating Formated File for new Valueset Files
+/*========================================================
+SP 1: CTE + JOIN + CASE + WHERE
+========================================================*/
+CREATE OR ALTER PROCEDURE dbo.sp_cte_join_example
+AS
+BEGIN
+    WITH patient_cte AS (
+        SELECT
+            p.patient_id,
+            p.mrn,
+            p.dob,
+            p.gender
+        FROM dbo.patient p
+        WHERE p.is_active = 1
+    )
+    SELECT
+        c.claim_id,
+        c.patient_id,
+        p.mrn,
+        CASE 
+            WHEN c.amount > 1000 THEN 'HIGH'
+            ELSE 'LOW'
+        END AS claim_type
+    FROM dbo.claims c
+    INNER JOIN patient_cte p
+        ON c.patient_id = p.patient_id;
+END;
+GO
+
+
+/*========================================================
+SP 2: Temp Table + Aggregation
+========================================================*/
+CREATE OR ALTER PROCEDURE dbo.sp_temp_table_example
+AS
+BEGIN
+    CREATE TABLE #claim_summary (
+        patient_id INT,
+        total_amount DECIMAL(18,2)
+    );
+
+    INSERT INTO #claim_summary (patient_id, total_amount)
+    SELECT
+        patient_id,
+        SUM(amount)
+    FROM dbo.claims
+    GROUP BY patient_id;
+
+    SELECT
+        p.patient_id,
+        p.mrn,
+        cs.total_amount
+    FROM #claim_summary cs
+    JOIN dbo.patient p
+        ON cs.patient_id = p.patient_id;
+END;
+GO
+
+
+/*========================================================
+SP 3: Dynamic SQL (Hardest for lineage)
+========================================================*/
+CREATE OR ALTER PROCEDURE dbo.sp_dynamic_sql_example
+    @table_name SYSNAME
+AS
+BEGIN
+    DECLARE @sql NVARCHAR(MAX);
+
+    SET @sql = '
+        SELECT *
+        FROM ' + QUOTENAME(@table_name) + '
+        WHERE created_date >= DATEADD(DAY, -30, GETDATE())
+    ';
+
+    EXEC sp_executesql @sql;
+END;
+GO
+
+
+/*========================================================
+SP 4: SELECT * + Subquery
+========================================================*/
+CREATE OR ALTER PROCEDURE dbo.sp_select_star_example
+AS
+BEGIN
+    SELECT *
+    FROM dbo.claims c
+    WHERE c.patient_id IN (
+        SELECT p.patient_id
+        FROM dbo.patient p
+        WHERE p.gender = 'F'
+    );
+END;
+GO
+
+
+/*========================================================
+SP 5: MERGE (Source → Target)
+========================================================*/
+CREATE OR ALTER PROCEDURE dbo.sp_merge_example
+AS
+BEGIN
+    MERGE dbo.claims_target t
+    USING dbo.claims_source s
+        ON t.claim_id = s.claim_id
+    WHEN MATCHED THEN
+        UPDATE SET
+            t.amount = s.amount,
+            t.updated_date = GETDATE()
+    WHEN NOT MATCHED THEN
+        INSERT (claim_id, patient_id, amount, created_date)
+        VALUES (s.claim_id, s.patient_id, s.amount, GETDATE());
+END;
+GO
+
+
+/*========================================================
+SP 6: Multiple Joins + Aliases + Calculated Columns
+========================================================*/
+CREATE OR ALTER PROCEDURE dbo.sp_multi_join_example
+AS
+BEGIN
+    SELECT
+        c.claim_id,
+        p.mrn,
+        pr.npi,
+        (c.amount * 0.1) AS tax_amount,
+        c.amount + (c.amount * 0.1) AS total_amount
+    FROM dbo.claims c
+    JOIN dbo.patient p
+        ON c.patient_id = p.patient_id
+    LEFT JOIN dbo.practitioner pr
+        ON c.practitioner_id = pr.practitioner_id;
+END;
+GO
+
+
+/*========================================================
+SP 7: PIVOT
+========================================================*/
+CREATE OR ALTER PROCEDURE dbo.sp_pivot_example
+AS
+BEGIN
+    SELECT *
+    FROM (
+        SELECT
+            patient_id,
+            service_type,
+            amount
+        FROM dbo.claims
+    ) src
+    PIVOT (
+        SUM(amount)
+        FOR service_type IN ([LAB], [XRAY], [MRI])
+    ) p;
+END;
+GO
+
+
+/*========================================================
+SP 8: UNION ALL
+========================================================*/
+CREATE OR ALTER PROCEDURE dbo.sp_union_example
+AS
+BEGIN
+    SELECT patient_id, amount, 'CLAIM' AS record_type
+    FROM dbo.claims
+    UNION ALL
+    SELECT patient_id, paid_amount, 'PAYMENT'
+    FROM dbo.payments;
+END;
+GO
+
+
+/*========================================================
+SP 9: Scalar Function + CROSS APPLY
+========================================================*/
+CREATE OR ALTER PROCEDURE dbo.sp_cross_apply_example
+AS
+BEGIN
+    SELECT
+        c.claim_id,
+        f.calculated_value
+    FROM dbo.claims c
+    CROSS APPLY dbo.fn_calculate_value(c.amount) f;
+END;
+GO
+
+
+/*========================================================
+SP 10: Nested Subqueries + EXISTS
+========================================================*/
+CREATE OR ALTER PROCEDURE dbo.sp_exists_example
+AS
+BEGIN
+    SELECT
+        p.patient_id,
+        p.mrn
+    FROM dbo.patient p
+    WHERE EXISTS (
+        SELECT 1
+        FROM dbo.claims c
+        WHERE c.patient_id = p.patient_id
+          AND c.amount > 500
+    );
+END;
+GO
