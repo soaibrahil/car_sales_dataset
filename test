@@ -1,37 +1,13 @@
 param (
-    [string]$InputFile = "C:\SqlParser\input.sql",
-    [string]$TableDefPath = "C:\SqlParser\table_definitions",
+    [string]$InputFile  = "C:\SqlParser\input.sql",
     [string]$OutputFile = "C:\SqlParser\output.txt"
 )
 
 # -----------------------------
-# Load SQL file
+# Read SQL File
 # -----------------------------
 $sqlText = Get-Content $InputFile -Raw
-
-# Normalize whitespace
 $sqlText = $sqlText -replace "\r\n", "`n"
-
-# -----------------------------
-# Load Table Definitions
-# -----------------------------
-$tableColumns = @{}
-
-Get-ChildItem $TableDefPath -Filter *.sql | ForEach-Object {
-    $tableSql = Get-Content $_.FullName -Raw
-    if ($tableSql -match "(?i)create\s+table\s+([\w\.\[\]]+)\s*\(([\s\S]+?)\)") {
-        $tableName = $matches[1].Trim("[]")
-        $colsBlock = $matches[2]
-
-        $cols = @()
-        foreach ($line in $colsBlock -split ",") {
-            if ($line -match "^\s*([\[\]\w]+)\s+") {
-                $cols += $matches[1].Trim("[]")
-            }
-        }
-        $tableColumns[$tableName.ToLower()] = $cols
-    }
-}
 
 # -----------------------------
 # Split Stored Procedures
@@ -45,95 +21,109 @@ $output = @()
 
 foreach ($proc in $procedures) {
 
-    if ($proc -notmatch "(?i)(create|alter)\s+procedure\s+([\w\.\[\]]+)") { continue }
+    if ($proc -notmatch "(?i)(create|alter)\s+procedure\s+([\w\.\[\]]+)") {
+        continue
+    }
 
     $procName = $matches[2].Trim("[]")
+
     $output += "======================================="
     $output += "Stored Procedure: $procName"
     $output += "---------------------------------------"
 
     # -----------------------------
-    # Extract Tables + Aliases
+    # Extract Tables and Aliases
     # -----------------------------
     $tables = @{}
     $tableRegex = "(?i)(from|join)\s+([\w\.\[\]]+)(?:\s+(?:as\s+)?(\w+))?"
 
     foreach ($m in [regex]::Matches($proc, $tableRegex)) {
-        $table = $m.Groups[2].Value.Trim("[]")
-        $alias = $m.Groups[3].Value
+        $tableName = $m.Groups[2].Value.Trim("[]")
+        $alias     = $m.Groups[3].Value
 
-        if (-not $tables.ContainsKey($table)) {
-            $tables[$table] = @()
+        if (-not $tables.ContainsKey($tableName)) {
+            $tables[$tableName] = @()
         }
-        if ($alias) {
-            $tables[$table] += $alias
+
+        if ($alias -and -not $tables[$tableName].Contains($alias)) {
+            $tables[$tableName] += $alias
         }
     }
 
     # -----------------------------
-    # Extract Column References
+    # Extract Column References (qualified)
     # -----------------------------
-    $columnRegex = "(?i)(\b\w+\b)\.(\b\w+\b)"
-    $columns = @()
+    $columns = @{}
+    $columnRegex = "(?i)\b(\w+)\.(\w+)\b"
 
     foreach ($m in [regex]::Matches($proc, $columnRegex)) {
-        $columns += @{
-            Prefix = $m.Groups[1].Value
-            Column = $m.Groups[2].Value
-        }
-    }
+        $prefix = $m.Groups[1].Value
+        $column = $m.Groups[2].Value
 
-    # -----------------------------
-    # Resolve Columns to Tables
-    # -----------------------------
-    $resolved = @{}
-
-    foreach ($col in $columns) {
         foreach ($table in $tables.Keys) {
-            $aliases = $tables[$table]
-            if ($aliases -contains $col.Prefix -or
-                $table.Split(".")[-1] -eq $col.Prefix) {
+            $tableShort = $table.Split('.')[-1]
+            $aliases    = $tables[$table]
 
-                if (-not $resolved.ContainsKey($table)) {
-                    $resolved[$table] = @()
+            if ($prefix -ieq $tableShort -or $aliases -contains $prefix) {
+                if (-not $columns.ContainsKey($table)) {
+                    $columns[$table] = @()
                 }
-                $resolved[$table] += $col.Column
+                if (-not $columns[$table].Contains($column)) {
+                    $columns[$table] += $column
+                }
             }
         }
     }
 
     # -----------------------------
-    # Infer Unqualified Columns
+    # Detect Unqualified Columns
     # -----------------------------
-    $unqualifiedRegex = "(?i)\bselect\b([\s\S]+?)\bfrom\b"
-    if ($proc -match $unqualifiedRegex) {
+    $unresolvedColumns = @()
+    $selectRegex = "(?i)\bselect\b([\s\S]+?)\bfrom\b"
+
+    if ($proc -match $selectRegex) {
         $selectBlock = $matches[1]
 
-        foreach ($token in ($selectBlock -split ",")) {
-            if ($token -match "^\s*(\w+)\s*$") {
-                $colName = $matches[1].ToLower()
-                foreach ($table in $tables.Keys) {
-                    if ($tableColumns.ContainsKey($table.ToLower()) -and
-                        $tableColumns[$table.ToLower()] -contains $colName) {
-
-                        if (-not $resolved.ContainsKey($table)) {
-                            $resolved[$table] = @()
-                        }
-                        $resolved[$table] += $colName
-                    }
+        foreach ($item in ($selectBlock -split ",")) {
+            $item = $item.Trim()
+            if ($item -notmatch "\.") {
+                if ($item -match "\b(\w+)\b") {
+                    $unresolvedColumns += $matches[1]
                 }
             }
         }
     }
 
     # -----------------------------
-    # Output Formatting
+    # Output Tables
     # -----------------------------
-    foreach ($table in $resolved.Keys) {
-        $output += "Table: $table"
-        $output += "  Columns:"
-        $resolved[$table] | Sort-Object -Unique | ForEach-Object {
-            $output += "    - $_"
+    if ($tables.Count -gt 0) {
+        $output += "Tables:"
+        foreach ($t in $tables.Keys) {
+            $output += "  - $t"
+        }
+    }
+
+    # -----------------------------
+    # Output Columns
+    # -----------------------------
+    if ($columns.Count -gt 0) {
+        $output += "Columns by Table:"
+        foreach ($t in $columns.Keys) {
+            $output += "  Table: $t"
+            foreach ($c in $columns[$t] | Sort-Object) {
+                $output += "    - $c"
+            }
+        }
+    }
+
+    # -----------------------------
+    # Output Unresolved Columns
+    # -----------------------------
+    if ($unresolvedColumns.Count -gt 0) {
+        $output += "Unresolved Columns (no table/alias reference):"
+        foreach ($c in ($unresolvedColumns | Sort-Object -Unique)) {
+            $output += "  - $c"
         }
     }
 
@@ -141,6 +131,7 @@ foreach ($proc in $procedures) {
 }
 
 # -----------------------------
-# Write Output
+# Write Output File
 # -----------------------------
 $output | Set-Content $OutputFile -Encoding UTF8
+
