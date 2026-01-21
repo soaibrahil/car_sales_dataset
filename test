@@ -1,166 +1,19 @@
-param (
-    [string]$InputFile  = "C:\SqlParser\input.sql",
-    [string]$OutputFile = "C:\SqlParser\output.txt"
-)
-
-# -----------------------------
-# Read SQL File
-# -----------------------------
-$sqlText = Get-Content $InputFile -Raw
-$sqlText = $sqlText -replace "\r\n", "`n"
-
-# -----------------------------
-# Split Stored Procedures
-# -----------------------------
-$procedures = [regex]::Split(
-    $sqlText,
-    "(?i)(?=create\s+procedure|alter\s+procedure)"
-)
-
-$output = @()
-
-foreach ($proc in $procedures) {
-
-    if ($proc -notmatch "(?i)(create|alter)\s+procedure\s+([\w\.\[\]]+)") {
-        continue
-    }
-
-    $procName = $matches[2].Trim("[]")
-
-    $output += "======================================="
-    $output += "Stored Procedure: $procName"
-    $output += "---------------------------------------"
-
-    # =====================================================
-    # CREATE TABLE
-    # =====================================================
-    $createTableRegex = "(?i)create\s+table\s+([\w\.\[\]]+)\s*\(([\s\S]+?)\)"
-    foreach ($m in [regex]::Matches($proc, $createTableRegex)) {
-        $tableName = $m.Groups[1].Value.Trim("[]")
-        $colsBlock = $m.Groups[2].Value
-
-        $output += "CREATE TABLE: $tableName"
-        $output += "  Columns:"
-        foreach ($line in ($colsBlock -split ",")) {
-            if ($line -match "^\s*([\[\]\w]+)\s+") {
-                $output += "    - " + $matches[1].Trim("[]")
-            }
-        }
-    }
-
-    # =====================================================
-    # TABLES + ALIASES (FROM / JOIN / MERGE)
-    # =====================================================
-    $tables = @{}
-    $tableRegex = "(?i)(from|join|merge\s+into|using)\s+([\w\.\[\]]+)(?:\s+(?:as\s+)?(\w+))?"
-
-    foreach ($m in [regex]::Matches($proc, $tableRegex)) {
-        $table = $m.Groups[2].Value.Trim("[]")
-        $alias = $m.Groups[3].Value
-
-        if (-not $tables.ContainsKey($table)) {
-            $tables[$table] = @()
-        }
-        if ($alias -and -not $tables[$table].Contains($alias)) {
-            $tables[$table] += $alias
-        }
-    }
-
-    if ($tables.Count -gt 0) {
-        $output += "Tables:"
-        foreach ($t in $tables.Keys) {
-            if ($tables[$t].Count -gt 0) {
-                $output += "  - $t (alias: $($tables[$t] -join ', '))"
-            } else {
-                $output += "  - $t"
-            }
-        }
-    }
-
-    # =====================================================
-    # MERGE STATEMENT DETAILS
-    # =====================================================
-    $mergeRegex = "(?i)merge\s+into\s+([\w\.\[\]]+)[\s\S]+?using\s+([\w\.\[\]]+)"
-    if ($proc -match $mergeRegex) {
-        $output += "MERGE Statement:"
-        $output += "  Target Table: " + $matches[1].Trim("[]")
-        $output += "  Source Table: " + $matches[2].Trim("[]")
-    }
-
-    # =====================================================
-    # COLUMN REFERENCES (qualified)
-    # =====================================================
-    $columns = @{}
-    $columnRegex = "(?i)\b(\w+)\.(\w+)\b"
-
-    foreach ($m in [regex]::Matches($proc, $columnRegex)) {
-        $prefix = $m.Groups[1].Value
-        $column = $m.Groups[2].Value
-
-        foreach ($table in $tables.Keys) {
-            $short = $table.Split('.')[-1]
-            if ($prefix -ieq $short -or $tables[$table] -contains $prefix) {
-                if (-not $columns.ContainsKey($table)) {
-                    $columns[$table] = @()
-                }
-                if (-not $columns[$table].Contains($column)) {
-                    $columns[$table] += $column
-                }
-            }
-        }
-    }
-
-    if ($columns.Count -gt 0) {
-        $output += "Columns by Table:"
-        foreach ($t in $columns.Keys) {
-            $output += "  Table: $t"
-            foreach ($c in $columns[$t] | Sort-Object) {
-                $output += "    - $c"
-            }
-        }
-    }
-
-    # =====================================================
-    # PIVOT
-    # =====================================================
-    $pivotRegex = "(?i)pivot\s*\(\s*([\w\.]+)\s+for\s+([\w\.]+)\s+in\s*\(([\s\S]+?)\)\s*\)"
-    if ($proc -match $pivotRegex) {
-        $output += "PIVOT Detected:"
-        $output += "  Value Column: " + $matches[1]
-        $output += "  Pivot Column: " + $matches[2]
-        $output += "  Pivot Values:"
-        foreach ($v in ($matches[3] -split ",")) {
-            $output += "    - " + $v.Trim(" []")
-        }
-    }
-
-    # =====================================================
-    # UNRESOLVED COLUMNS
-    # =====================================================
-    $unresolved = @()
-    $selectRegex = "(?i)\bselect\b([\s\S]+?)\bfrom\b"
-
-    if ($proc -match $selectRegex) {
-        foreach ($item in ($matches[1] -split ",")) {
-            if ($item -notmatch "\.") {
-                if ($item -match "\b(\w+)\b") {
-                    $unresolved += $matches[1]
-                }
-            }
-        }
-    }
-
-    if ($unresolved.Count -gt 0) {
-        $output += "Unresolved Columns:"
-        foreach ($c in ($unresolved | Sort-Object -Unique)) {
-            $output += "  - $c"
-        }
-    }
-
-    $output += ""
-}
-
-# -----------------------------
-# Write Output
-# -----------------------------
-$output | Set-Content $OutputFile -Encoding UTF8
+QIP Weekly Meeting	2667	1.00	1/5/2026	QIP Weekly Meeting
+Created template job for SP using FramWork Package	2667	3.00	1/5/2026	Created template job for SP using FramWork Package
+Infrastructure Meeting	2667	1.00	1/5/2026	Infrastructure Meeting
+Healthlink Change Meeting	2667	1.00	1/5/2026	HealthLink CAB Meeting
+QIP Valueset Loading Package Devlopment	2667	2.00	1/5/2026	QIP Valueset Loading Package Devlopment
+Script Devlopment For TableColumn Used in SP 	2667	6.00	1/6/2026	Script Devlopment For TableColumn Used in SP 
+Technical Meeting	2667	1.00	1/6/2026	Technical Meeting
+Triage Call	2667	1.00	1/6/2026	Triage calls
+Healthlink Change Meeting	2667	1.00	1/7/2026	HealthLink CAB Meeting
+Triage Call	2667	1.00	1/7/2026	Triage calls
+SSIS Package Devlopment For TableColumn Used in SP 	2667	5.00	1/7/2026	SSIS Package Devlopment For TableColumn Used in SP 
+Analytical Meeting	2667	1.00	1/7/2026	Analytical Meeting
+SSIS Package Devlopment For TableColumn Used in SP 	2667	7.00	1/8/2026	SSIS Package Devlopment For TableColumn Used in SP 
+Triage Call	2667	1.00	1/8/2026	Triage calls
+Admin tasks	2667	2.00	1/9/2026	Admin tasks
+Job Run Analysis	2667	2.00	1/9/2026	Job Run Analysis
+SSIS Package Testing For TableColumn Used in SP 	2667	2.00	1/9/2026	SSIS Package Testing For TableColumn Used in SP 
+Triage Call	2667	1.00	1/9/2026	Triage calls
+Creating Formated File for new Valueset Files	2667	1.00	1/9/2026	Creating Formated File for new Valueset Files
