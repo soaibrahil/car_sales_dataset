@@ -7,7 +7,7 @@ $newMonth = "December"
 
 # Start PowerPoint
 $pptApp = New-Object -ComObject PowerPoint.Application
-$pptApp.Visible = $false
+$pptApp.Visible = [Microsoft.Office.Core.MsoTriState]::msoFalse
 
 # Get all PPT and PPTX files
 $pptFiles = Get-ChildItem -Path $folderPath -Include *.ppt, *.pptx -File
