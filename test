@@ -1,19 +1,46 @@
-QIP Weekly Meeting	2667	1.00	1/12/2026	QIP Weekly Meeting
-SP Column Table Depedency Script Development 	2667	4.00	1/12/2026	SP Column Table Depedency Script Development 
-Infrastructure Meeting	2667	1.00	1/12/2026	Infrastructure Meeting
-Healthlink Change Meeting	2667	1.00	1/12/2026	HealthLink CAB Meeting
-QIP File Sync	2667	1.00	1/12/2026	QIP File Sync
-SP Column Table Depedency Script Development 	2667	5.00	1/13/2026	SP Column Table Depedency Script Development 
-Technical Meeting	2667	1.00	1/13/2026	Technical Meeting
-Triage Call	2667	1.00	1/13/2026	Triage calls
-Healthlink Change Meeting	2667	1.00	1/13/2026	HealthLink CAB Meeting
-Healthlink Change Meeting	2667	1.00	1/14/2026	HealthLink CAB Meeting
-Triage Call	2667	1.00	1/14/2026	Triage calls
-Code Optimization	2667	6.00	1/14/2026	Code Optimization
-Code Optimization	2667	7.00	1/15/2026	Code Optimization
-Triage Call	2667	1.00	1/15/2026	Triage calls
-Admin tasks	2667	2.00	1/16/2026	Admin tasks
-Job Run Analysis	2667	2.00	1/16/2026	Job Run Analysis
-SP Column Table Depedency Script Development 	2667	2.00	1/16/2026	SP Column Table Depedency Script Development 
-Triage Call	2667	1.00	1/16/2026	Triage calls
-Stored Procedure Devlopment	2667	1.00	1/16/2026	Stored Procedure Devlopment
+# Folder containing PowerPoint files
+$folderPath = "C:\Reports\PPTs"
+
+# Text to replace
+$oldMonth = "November"
+$newMonth = "December"
+
+# Start PowerPoint
+$pptApp = New-Object -ComObject PowerPoint.Application
+$pptApp.Visible = $false
+
+# Get all PPT and PPTX files
+$pptFiles = Get-ChildItem -Path $folderPath -Include *.ppt, *.pptx -File
+
+foreach ($file in $pptFiles) {
+    Write-Host "Processing $($file.Name)..."
+
+    $presentation = $pptApp.Presentations.Open($file.FullName, $true, $false, $false)
+
+    foreach ($slide in $presentation.Slides) {
+        foreach ($shape in $slide.Shapes) {
+
+            if ($shape.HasTextFrame -and $shape.TextFrame.HasText) {
+                $textRange = $shape.TextFrame.TextRange
+
+                if ($textRange.Text -match $oldMonth) {
+                    $textRange.Text = $textRange.Text -replace $oldMonth, $newMonth
+                }
+            }
+        }
+    }
+
+    # Save changes
+    $presentation.Save()
+    $presentation.Close()
+}
+
+# Close PowerPoint
+$pptApp.Quit()
+
+# Cleanup COM objects
+[System.Runtime.InteropServices.Marshal]::ReleaseComObject($pptApp) | Out-Null
+[GC]::Collect()
+[GC]::WaitForPendingFinalizers()
+
+Write-Host "All PowerPoint files updated successfully."
