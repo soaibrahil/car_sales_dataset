@@ -1,33 +1,53 @@
-using System;
-using System.IO;
-using Microsoft.SqlServer.Dts.Runtime;
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Process Failure Notification</title>
+</head>
+<body style="font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #333;">
 
-public void Main()
-{
-    try
-    {
-        string sourceDir = Dts.Variables["User::SourceDirectory"].Value.ToString();
-        string filePattern = "abc*";
+    <p>Hello Team,</p>
 
-        bool fileExists = false;
+    <p>
+        The scheduled process <strong>failed</strong> due to a missing source file.
+    </p>
 
-        if (Directory.Exists(sourceDir))
-        {
-            string[] files = Directory.GetFiles(sourceDir, filePattern);
+    <table cellpadding="6" cellspacing="0" border="0" style="border-collapse: collapse; margin-top: 10px;">
+        <tr>
+            <td><strong>Issue:</strong></td>
+            <td>Source file not found</td>
+        </tr>
+        <tr>
+            <td><strong>Expected File Pattern:</strong></td>
+            <td><code>abc*</code></td>
+        </tr>
+        <tr>
+            <td><strong>Source Directory:</strong></td>
+            <td><code>\\ServerName\Inbound\Source</code></td>
+        </tr>
+        <tr>
+            <td><strong>Process Name:</strong></td>
+            <td>Inbound File Processing Job</td>
+        </tr>
+        <tr>
+            <td><strong>Execution Time:</strong></td>
+            <td>@@ExecutionTime@@</td>
+        </tr>
+    </table>
 
-            if (files.Length > 0)
-            {
-                fileExists = true;
-            }
-        }
+    <p style="margin-top: 15px;">
+        As the required input file was not available at the source location, the process was not executed.
+        Please verify the file availability and re-run the job if required.
+    </p>
 
-        Dts.Variables["User::is_file"].Value = fileExists;
-        Dts.TaskResult = (int)ScriptResults.Success;
-    }
-    catch (Exception ex)
-    {
-        // Optional: log error
-        Dts.Events.FireError(0, "File Check Script", ex.Message, "", 0);
-        Dts.TaskResult = (int)ScriptResults.Failure;
-    }
-}
+    <p>
+        This is an automated notification. No action is required if the issue has already been addressed.
+    </p>
+
+    <p style="margin-top: 20px;">
+        Regards,<br />
+        <strong>Data Integration Team</strong>
+    </p>
+
+</body>
+</html>
