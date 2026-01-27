@@ -1,46 +1,33 @@
-# Folder containing PowerPoint files
-$folderPath = "C:\Reports\PPTs"
+using System;
+using System.IO;
+using Microsoft.SqlServer.Dts.Runtime;
 
-# Text to replace
-$oldMonth = "November"
-$newMonth = "December"
+public void Main()
+{
+    try
+    {
+        string sourceDir = Dts.Variables["User::SourceDirectory"].Value.ToString();
+        string filePattern = "abc*";
 
-# Start PowerPoint
-$pptApp = New-Object -ComObject PowerPoint.Application
-$pptApp.Visible = [Microsoft.Office.Core.MsoTriState]::msoFalse
+        bool fileExists = false;
 
-# Get all PPT and PPTX files
-$pptFiles = Get-ChildItem -Path $folderPath -Include *.ppt, *.pptx -File
+        if (Directory.Exists(sourceDir))
+        {
+            string[] files = Directory.GetFiles(sourceDir, filePattern);
 
-foreach ($file in $pptFiles) {
-    Write-Host "Processing $($file.Name)..."
-
-    $presentation = $pptApp.Presentations.Open($file.FullName, $true, $false, $false)
-
-    foreach ($slide in $presentation.Slides) {
-        foreach ($shape in $slide.Shapes) {
-
-            if ($shape.HasTextFrame -and $shape.TextFrame.HasText) {
-                $textRange = $shape.TextFrame.TextRange
-
-                if ($textRange.Text -match $oldMonth) {
-                    $textRange.Text = $textRange.Text -replace $oldMonth, $newMonth
-                }
+            if (files.Length > 0)
+            {
+                fileExists = true;
             }
         }
+
+        Dts.Variables["User::is_file"].Value = fileExists;
+        Dts.TaskResult = (int)ScriptResults.Success;
     }
-
-    # Save changes
-    $presentation.Save()
-    $presentation.Close()
+    catch (Exception ex)
+    {
+        // Optional: log error
+        Dts.Events.FireError(0, "File Check Script", ex.Message, "", 0);
+        Dts.TaskResult = (int)ScriptResults.Failure;
+    }
 }
-
-# Close PowerPoint
-$pptApp.Quit()
-
-# Cleanup COM objects
-[System.Runtime.InteropServices.Marshal]::ReleaseComObject($pptApp) | Out-Null
-[GC]::Collect()
-[GC]::WaitForPendingFinalizers()
-
-Write-Host "All PowerPoint files updated successfully."
