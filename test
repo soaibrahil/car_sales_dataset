@@ -3,7 +3,7 @@ param (
     [string]$OutputFile = "C:\SqlParser\output.csv"
 )
 
-$sqlText = Get-Content $InputFile -Raw
+$sqlText = Get-Content $InputFile -Raw -Encoding UTF8
 $sqlText = $sqlText -replace "\r\n", "`n"
 
 $procedures = [regex]::Split(
@@ -18,140 +18,65 @@ foreach ($proc in $procedures) {
     if ($proc -notmatch "(?i)(create|alter)\s+procedure\s+([\w\.\[\]]+)") { continue }
 
     $procFull = $matches[2].Trim("[]")
-    $procParts = $procFull.Split(".")
-    $procName = $procParts[-1]
+    $procName = $procFull.Split(".")[-1]
 
-    # -----------------------------------------------------
-    # TABLES + ALIASES (including temp tables)
-    # -----------------------------------------------------
+    # -----------------------------
+    # Extract tables + aliases
+    # -----------------------------
     $tables = @{}
-    $tableRegex = "(?i)(from|join|merge\s+into|using|update|delete\s+from|insert\s+into)\s+([#\w\.\[\]]+)(?:\s+(?:as\s+)?(\w+))?"
+    $tableRegex = "(?i)(from|join|merge\s+into|using)\s+([\w\.\[\]]+)(?:\s+(?:as\s+)?(\w+))?"
 
     foreach ($m in [regex]::Matches($proc, $tableRegex)) {
-        $tbl = $m.Groups[2].Value.Trim("[]")
-        $alias = $m.Groups[3].Value
-
-        if (-not $tables.ContainsKey($tbl)) { $tables[$tbl] = @() }
-        if ($alias -and -not $tables[$tbl].Contains($alias)) {
-            $tables[$tbl] += $alias
-        }
+        $t = $m.Groups[2].Value.Trim("[]")
+        $a = $m.Groups[3].Value
+        if (-not $tables.ContainsKey($t)) { $tables[$t] = @() }
+        if ($a) { $tables[$t] += $a }
     }
 
-    # -----------------------------------------------------
-    # CREATE TABLE (incl temp)
-    # -----------------------------------------------------
-    $createTableRegex = "(?i)create\s+table\s+([#\w\.\[\]]+)\s*\(([\s\S]+?)\)"
-    foreach ($m in [regex]::Matches($proc, $createTableRegex)) {
+    # -----------------------------
+    # Qualified columns everywhere
+    # -----------------------------
+    $qualifiedRegex = "(?i)\b(\w+)\.(\w+)\b"
 
-        $tableFull = $m.Groups[1].Value.Trim("[]")
-        $schema = if ($tableFull.StartsWith("#")) { "tempdb" }
-                  elseif ($tableFull.Split(".").Count -gt 1) { $tableFull.Split(".")[-2] }
-                  else { "dbo" }
+    foreach ($m in [regex]::Matches($proc, $qualifiedRegex)) {
+        $prefix = $m.Groups[1].Value
+        $column = $m.Groups[2].Value
 
-        $tableName = $tableFull.Split(".")[-1]
+        foreach ($tableFull in $tables.Keys) {
+            $parts = $tableFull.Split(".")
+            $tableName = $parts[-1]
+            $schema = if ($parts.Count -gt 1) { $parts[-2] } else { "dbo" }
 
-        foreach ($line in ($m.Groups[2].Value -split ",")) {
-            if ($line -match "^\s*([\[\]\w]+)\s+") {
+            if ($prefix -ieq $tableName -or $tables[$tableFull] -contains $prefix) {
                 $results += [pscustomobject]@{
                     StoredProcedure = $procName
                     Schema          = $schema
                     Table           = $tableName
-                    Column          = $matches[1].Trim("[]")
+                    Column          = $column
                 }
             }
         }
     }
 
-    # -----------------------------------------------------
-    # INSERT
-    # -----------------------------------------------------
-    $insertRegex = "(?i)insert\s+into\s+([#\w\.\[\]]+)\s*(\(([^)]+)\))?"
-    foreach ($m in [regex]::Matches($proc, $insertRegex)) {
+    # -----------------------------
+    # Unqualified columns (any clause)
+    # -----------------------------
+    $unqualifiedRegex = "(?i)\b(select|where|on|group\s+by|order\s+by|having)\b([\s\S]+?)(?=select|where|on|group\s+by|order\s+by|having|$)"
 
-        $tableFull = $m.Groups[1].Value.Trim("[]")
-        $schema = if ($tableFull.StartsWith("#")) { "tempdb" }
-                  elseif ($tableFull.Split(".").Count -gt 1) { $tableFull.Split(".")[-2] }
-                  else { "dbo" }
-
-        $tableName = $tableFull.Split(".")[-1]
-
-        if ($m.Groups[3].Success) {
-            foreach ($c in ($m.Groups[3].Value -split ",")) {
+    foreach ($m in [regex]::Matches($proc, $unqualifiedRegex)) {
+        foreach ($token in ($m.Groups[2].Value -split "[,\s=()]")) {
+            if ($token -match "^[A-Za-z_]\w*$") {
                 $results += [pscustomobject]@{
                     StoredProcedure = $procName
-                    Schema          = $schema
-                    Table           = $tableName
-                    Column          = $c.Trim(" []")
+                    Schema          = ""
+                    Table           = "<UNKNOWN>"
+                    Column          = $token
                 }
             }
-        }
-        else {
-            $results += [pscustomobject]@{
-                StoredProcedure = $procName
-                Schema          = $schema
-                Table           = $tableName
-                Column          = "<UNRESOLVED>"
-            }
-        }
-    }
-
-    # -----------------------------------------------------
-    # UPDATE
-    # -----------------------------------------------------
-    $updateRegex = "(?i)update\s+(\w+)[\s\S]+?set\s+([\s\S]+?)\b(from|where)\b"
-    foreach ($m in [regex]::Matches($proc, $updateRegex)) {
-
-        $alias = $m.Groups[1].Value
-        $setBlock = $m.Groups[2].Value
-
-        foreach ($tbl in $tables.Keys) {
-            if ($tables[$tbl] -contains $alias -or $tbl.Split(".")[-1] -eq $alias) {
-
-                $schema = if ($tbl.StartsWith("#")) { "tempdb" }
-                          elseif ($tbl.Split(".").Count -gt 1) { $tbl.Split(".")[-2] }
-                          else { "dbo" }
-
-                $tableName = $tbl.Split(".")[-1]
-
-                foreach ($assign in ($setBlock -split ",")) {
-                    if ($assign -match "(\w+)\s*=") {
-                        $results += [pscustomobject]@{
-                            StoredProcedure = $procName
-                            Schema          = $schema
-                            Table           = $tableName
-                            Column          = $matches[1]
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    # -----------------------------------------------------
-    # DELETE
-    # -----------------------------------------------------
-    $deleteRegex = "(?i)delete\s+(?:from\s+)?([#\w\.\[\]]+)"
-    foreach ($m in [regex]::Matches($proc, $deleteRegex)) {
-
-        $tableFull = $m.Groups[1].Value.Trim("[]")
-        $schema = if ($tableFull.StartsWith("#")) { "tempdb" }
-                  elseif ($tableFull.Split(".").Count -gt 1) { $tableFull.Split(".")[-2] }
-                  else { "dbo" }
-
-        $tableName = $tableFull.Split(".")[-1]
-
-        $results += [pscustomobject]@{
-            StoredProcedure = $procName
-            Schema          = $schema
-            Table           = $tableName
-            Column          = "<DELETE>"
         }
     }
 }
 
-# -----------------------------------------------------
-# WRITE CSV
-# -----------------------------------------------------
 $results |
     Sort-Object StoredProcedure, Schema, Table, Column -Unique |
     Export-Csv $OutputFile -NoTypeInformation -Encoding UTF8
