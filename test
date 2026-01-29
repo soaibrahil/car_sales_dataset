@@ -3,9 +3,34 @@ param (
     [string]$OutputFile = "C:\SqlParser\output.csv"
 )
 
+# =====================================================
+# Read SQL File
+# =====================================================
 $sqlText = Get-Content $InputFile -Raw -Encoding UTF8
 $sqlText = $sqlText -replace "\r\n", "`n"
 
+# =====================================================
+# REMOVE COMMENTS FIRST
+# =====================================================
+
+# Remove /* block comments */
+$sqlText = [regex]::Replace(
+    $sqlText,
+    "/\*[\s\S]*?\*/",
+    "",
+    [System.Text.RegularExpressions.RegexOptions]::IgnoreCase
+)
+
+# Remove -- single line comments
+$sqlText = [regex]::Replace(
+    $sqlText,
+    "(?m)--.*$",
+    ""
+)
+
+# =====================================================
+# Split Stored Procedures
+# =====================================================
 $procedures = [regex]::Split(
     $sqlText,
     "(?i)(?=create\s+procedure|alter\s+procedure)"
@@ -20,22 +45,27 @@ foreach ($proc in $procedures) {
     $procFull = $matches[2].Trim("[]")
     $procName = $procFull.Split(".")[-1]
 
-    # -----------------------------
+    # =====================================================
     # Extract tables + aliases
-    # -----------------------------
+    # =====================================================
     $tables = @{}
     $tableRegex = "(?i)(from|join|merge\s+into|using)\s+([\w\.\[\]]+)(?:\s+(?:as\s+)?(\w+))?"
 
     foreach ($m in [regex]::Matches($proc, $tableRegex)) {
-        $t = $m.Groups[2].Value.Trim("[]")
-        $a = $m.Groups[3].Value
-        if (-not $tables.ContainsKey($t)) { $tables[$t] = @() }
-        if ($a) { $tables[$t] += $a }
+        $table = $m.Groups[2].Value.Trim("[]")
+        $alias = $m.Groups[3].Value
+
+        if (-not $tables.ContainsKey($table)) {
+            $tables[$table] = @()
+        }
+        if ($alias -and -not $tables[$table].Contains($alias)) {
+            $tables[$table] += $alias
+        }
     }
 
-    # -----------------------------
-    # Qualified columns everywhere
-    # -----------------------------
+    # =====================================================
+    # Qualified columns (ANY clause)
+    # =====================================================
     $qualifiedRegex = "(?i)\b(\w+)\.(\w+)\b"
 
     foreach ($m in [regex]::Matches($proc, $qualifiedRegex)) {
@@ -58,13 +88,13 @@ foreach ($proc in $procedures) {
         }
     }
 
-    # -----------------------------
-    # Unqualified columns (any clause)
-    # -----------------------------
-    $unqualifiedRegex = "(?i)\b(select|where|on|group\s+by|order\s+by|having)\b([\s\S]+?)(?=select|where|on|group\s+by|order\s+by|having|$)"
+    # =====================================================
+    # Unqualified columns (SELECT / WHERE / JOIN / GROUP / ORDER / HAVING)
+    # =====================================================
+    $clauseRegex = "(?i)\b(select|where|on|group\s+by|order\s+by|having)\b([\s\S]+?)(?=\bselect\b|\bwhere\b|\bon\b|\bgroup\s+by\b|\border\s+by\b|\bhaving\b|$)"
 
-    foreach ($m in [regex]::Matches($proc, $unqualifiedRegex)) {
-        foreach ($token in ($m.Groups[2].Value -split "[,\s=()]")) {
+    foreach ($m in [regex]::Matches($proc, $clauseRegex)) {
+        foreach ($token in ($m.Groups[2].Value -split "[,\s=()+*/]")) {
             if ($token -match "^[A-Za-z_]\w*$") {
                 $results += [pscustomobject]@{
                     StoredProcedure = $procName
@@ -77,6 +107,9 @@ foreach ($proc in $procedures) {
     }
 }
 
+# =====================================================
+# Write CSV Output
+# =====================================================
 $results |
     Sort-Object StoredProcedure, Schema, Table, Column -Unique |
     Export-Csv $OutputFile -NoTypeInformation -Encoding UTF8
