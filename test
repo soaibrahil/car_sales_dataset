@@ -45,7 +45,6 @@ public void Main()
 }
 
 ------------------------------------------------------------------------
-
 using System;
 using System.Collections.Generic;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
@@ -54,7 +53,7 @@ public class LineageVisitor : TSqlFragmentVisitor
 {
     private string procedureName = "UNKNOWN";
 
-    // alias → (schema, table)
+    // alias -> (schema, table)
     private Dictionary<string, (string Schema, string Table)> tableAliases =
         new Dictionary<string, (string, string)>(StringComparer.OrdinalIgnoreCase);
 
@@ -87,7 +86,9 @@ public class LineageVisitor : TSqlFragmentVisitor
             }
         }
 
+        // Alias is ONLY for lookup, never for output
         string alias = node.Alias != null ? node.Alias.Value : table;
+
         tableAliases[alias] = (schema, table);
 
         base.Visit(node);
@@ -103,20 +104,25 @@ public class LineageVisitor : TSqlFragmentVisitor
             string alias = ids[0].Value;
             string column = ids[1].Value;
 
-            if (tableAliases.ContainsKey(alias))
+            if (tableAliases.TryGetValue(alias, out var tableInfo))
             {
-                var t = tableAliases[alias];
-                Results.Add($"{procedureName},{t.Schema},{t.Table},{column}");
+                Results.Add(
+                    $"{procedureName},{tableInfo.Schema},{tableInfo.Table},{column}"
+                );
             }
             else
             {
-                Results.Add($"{procedureName},unknown,unknown,{alias}.{column}");
+                Results.Add(
+                    $"{procedureName},unknown,unknown,{column}"
+                );
             }
         }
-        // column only (no table reference)
+        // column only
         else if (ids != null && ids.Count == 1)
         {
-            Results.Add($"{procedureName},unknown,unknown,{ids[0].Value}");
+            Results.Add(
+                $"{procedureName},unknown,unknown,{ids[0].Value}"
+            );
         }
 
         base.Visit(node);
