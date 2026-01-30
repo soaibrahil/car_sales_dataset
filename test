@@ -45,6 +45,8 @@ public void Main()
 }
 
 ------------------------------------------------------------------------
+
+
 using System;
 using System.Collections.Generic;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
@@ -53,11 +55,11 @@ public class LineageVisitor : TSqlFragmentVisitor
 {
     private string procedureName = "UNKNOWN";
 
-    // Stack to support nested queries
-    private Stack<Dictionary<string, (string Schema, string Table)>> aliasScopes =
-        new Stack<Dictionary<string, (string, string)>>();
+    // alias -> (schema, table)
+    private Dictionary<string, (string Schema, string Table)> aliasMap =
+        new Dictionary<string, (string, string)>(StringComparer.OrdinalIgnoreCase);
 
-    // Deduped results
+    // Dedup: SP|Schema|Table|Column
     private HashSet<string> dedup =
         new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -66,28 +68,19 @@ public class LineageVisitor : TSqlFragmentVisitor
     public override void Visit(CreateProcedureStatement node)
     {
         procedureName = node.ProcedureReference.Name.BaseIdentifier.Value;
+        aliasMap.Clear();   // RESET PER SP (THIS IS CRITICAL)
         base.Visit(node);
-    }
-
-    // New query block → new alias scope
-    public override void Visit(QuerySpecification node)
-    {
-        aliasScopes.Push(new Dictionary<string, (string, string)>(StringComparer.OrdinalIgnoreCase));
-        base.Visit(node);
-        aliasScopes.Pop();
     }
 
     public override void Visit(NamedTableReference node)
     {
-        if (aliasScopes.Count == 0)
-            return;
-
         string schema = "unknown";
         string table = "unknown";
 
         if (node.SchemaObject != null)
         {
             var ids = node.SchemaObject.Identifiers;
+
             if (ids.Count == 2)
             {
                 schema = ids[0].Value;
@@ -100,7 +93,9 @@ public class LineageVisitor : TSqlFragmentVisitor
         }
 
         string alias = node.Alias != null ? node.Alias.Value : table;
-        aliasScopes.Peek()[alias] = (schema, table);
+
+        // Store alias → actual table
+        aliasMap[alias] = (schema, table);
 
         base.Visit(node);
     }
@@ -121,14 +116,10 @@ public class LineageVisitor : TSqlFragmentVisitor
             string alias = ids[0].Value;
             column = ids[1].Value;
 
-            foreach (var scope in aliasScopes)
+            if (aliasMap.TryGetValue(alias, out var tbl))
             {
-                if (scope.TryGetValue(alias, out var tbl))
-                {
-                    schema = tbl.Schema;
-                    table = tbl.Table;
-                    break;
-                }
+                schema = tbl.Schema;
+                table = tbl.Table;
             }
         }
         // column only
@@ -142,6 +133,7 @@ public class LineageVisitor : TSqlFragmentVisitor
         }
 
         string row = $"{procedureName},{schema},{table},{column}";
+
         if (dedup.Add(row))
             Results.Add(row);
 
