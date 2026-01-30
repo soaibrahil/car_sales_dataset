@@ -1,115 +1,13 @@
-param (
-    [string]$InputFile  = "C:\SqlParser\input.sql",
-    [string]$OutputFile = "C:\SqlParser\output.csv"
-)
-
-# =====================================================
-# Read SQL File
-# =====================================================
-$sqlText = Get-Content $InputFile -Raw -Encoding UTF8
-$sqlText = $sqlText -replace "\r\n", "`n"
-
-# =====================================================
-# REMOVE COMMENTS FIRST
-# =====================================================
-
-# Remove /* block comments */
-$sqlText = [regex]::Replace(
-    $sqlText,
-    "/\*[\s\S]*?\*/",
-    "",
-    [System.Text.RegularExpressions.RegexOptions]::IgnoreCase
-)
-
-# Remove -- single line comments
-$sqlText = [regex]::Replace(
-    $sqlText,
-    "(?m)--.*$",
-    ""
-)
-
-# =====================================================
-# Split Stored Procedures
-# =====================================================
-$procedures = [regex]::Split(
-    $sqlText,
-    "(?i)(?=create\s+procedure|alter\s+procedure)"
-)
-
-$results = @()
-
-foreach ($proc in $procedures) {
-
-    if ($proc -notmatch "(?i)(create|alter)\s+procedure\s+([\w\.\[\]]+)") { continue }
-
-    $procFull = $matches[2].Trim("[]")
-    $procName = $procFull.Split(".")[-1]
-
-    # =====================================================
-    # Extract tables + aliases
-    # =====================================================
-    $tables = @{}
-    $tableRegex = "(?i)(from|join|merge\s+into|using)\s+([\w\.\[\]]+)(?:\s+(?:as\s+)?(\w+))?"
-
-    foreach ($m in [regex]::Matches($proc, $tableRegex)) {
-        $table = $m.Groups[2].Value.Trim("[]")
-        $alias = $m.Groups[3].Value
-
-        if (-not $tables.ContainsKey($table)) {
-            $tables[$table] = @()
-        }
-        if ($alias -and -not $tables[$table].Contains($alias)) {
-            $tables[$table] += $alias
-        }
-    }
-
-    # =====================================================
-    # Qualified columns (ANY clause)
-    # =====================================================
-    $qualifiedRegex = "(?i)\b(\w+)\.(\w+)\b"
-
-    foreach ($m in [regex]::Matches($proc, $qualifiedRegex)) {
-        $prefix = $m.Groups[1].Value
-        $column = $m.Groups[2].Value
-
-        foreach ($tableFull in $tables.Keys) {
-            $parts = $tableFull.Split(".")
-            $tableName = $parts[-1]
-            $schema = if ($parts.Count -gt 1) { $parts[-2] } else { "dbo" }
-
-            if ($prefix -ieq $tableName -or $tables[$tableFull] -contains $prefix) {
-                $results += [pscustomobject]@{
-                    StoredProcedure = $procName
-                    Schema          = $schema
-                    Table           = $tableName
-                    Column          = $column
-                }
-            }
-        }
-    }
-
-    # =====================================================
-    # Unqualified columns (SELECT / WHERE / JOIN / GROUP / ORDER / HAVING)
-    # =====================================================
-    $clauseRegex = "(?i)\b(select|where|on|group\s+by|order\s+by|having)\b([\s\S]+?)(?=\bselect\b|\bwhere\b|\bon\b|\bgroup\s+by\b|\border\s+by\b|\bhaving\b|$)"
-
-    foreach ($m in [regex]::Matches($proc, $clauseRegex)) {
-        foreach ($token in ($m.Groups[2].Value -split "[,\s=()+*/]")) {
-            if ($token -match "^[A-Za-z_]\w*$") {
-                $results += [pscustomobject]@{
-                    StoredProcedure = $procName
-                    Schema          = ""
-                    Table           = "<UNKNOWN>"
-                    Column          = $token
-                }
-            }
-        }
-    }
-}
-
-# =====================================================
-# Write CSV Output
-# =====================================================
-$results |
-    Sort-Object StoredProcedure, Schema, Table, Column -Unique |
-    Export-Csv $OutputFile -NoTypeInformation -Encoding UTF8
+QIP Weekly Meeting	2667	1.00	1/20/2026	QIP Weekly Meeting
+Code Optimization	2667	5.00	1/20/2026	Code Optimization
+Triage Call	2667	1.00	1/20/2026	Triage calls
+Healthlink Change Meeting	2667	1.00	1/20/2026	HealthLink CAB Meeting
+Triage Call	2667	1.00	1/21/2026	Triage calls
+Code Optimization	2667	7.00	1/21/2026	Code Optimization
+Developing a ETL Check Job on Table Basis	2667	6.00	1/22/2026	Developing ETL Check Job Checking for individual table Status
+Triage Call	2667	1.00	1/22/2026	Triage calls
+ValueSet	2667	1.00	1/22/2026	ValueSet
+Admin tasks	2667	2.00	1/23/2026	Admin tasks
+Job Run Analysis	2667	2.00	1/23/2026	Job Run Analysis
+Code Optimization	2667	3.00	1/23/2026	Code Optimization
+Triage Call	2667	1.00	1/23/2026	Triage calls
