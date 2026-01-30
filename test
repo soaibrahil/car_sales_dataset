@@ -1,13 +1,124 @@
-QIP Weekly Meeting	2667	1.00	1/20/2026	QIP Weekly Meeting
-Code Optimization	2667	5.00	1/20/2026	Code Optimization
-Triage Call	2667	1.00	1/20/2026	Triage calls
-Healthlink Change Meeting	2667	1.00	1/20/2026	HealthLink CAB Meeting
-Triage Call	2667	1.00	1/21/2026	Triage calls
-Code Optimization	2667	7.00	1/21/2026	Code Optimization
-Developing a ETL Check Job on Table Basis	2667	6.00	1/22/2026	Developing ETL Check Job Checking for individual table Status
-Triage Call	2667	1.00	1/22/2026	Triage calls
-ValueSet	2667	1.00	1/22/2026	ValueSet
-Admin tasks	2667	2.00	1/23/2026	Admin tasks
-Job Run Analysis	2667	2.00	1/23/2026	Job Run Analysis
-Code Optimization	2667	3.00	1/23/2026	Code Optimization
-Triage Call	2667	1.00	1/23/2026	Triage calls
+using System;
+using System.IO;
+using System.Collections.Generic;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
+using Microsoft.SqlServer.Dts.Runtime;
+
+public void Main()
+{
+    string inputFile = @"C:\Temp\input_sp.txt";
+    string outputFile = @"C:\Temp\output_lineage.csv";
+
+    string fullSql = File.ReadAllText(inputFile);
+
+    string[] procedures = System.Text.RegularExpressions.Regex.Split(
+        fullSql,
+        @"^\s*GO\s*$",
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase |
+        System.Text.RegularExpressions.RegexOptions.Multiline
+    );
+
+    var rows = new List<string>();
+    rows.Add("StoredProcedureName,Schema,Table,Column");
+
+    foreach (string spText in procedures)
+    {
+        if (string.IsNullOrWhiteSpace(spText))
+            continue;
+
+        IList<ParseError> errors;
+        var parser = new TSql150Parser(false);
+        var fragment = parser.Parse(new StringReader(spText), out errors);
+
+        if (errors.Count > 0)
+            continue;
+
+        var visitor = new LineageVisitor();
+        fragment.Accept(visitor);
+
+        foreach (var r in visitor.Results)
+            rows.Add(r);
+    }
+
+    File.WriteAllLines(outputFile, rows);
+    Dts.TaskResult = (int)ScriptResults.Success;
+}
+
+------------------------------------------------------------------------
+
+using System;
+using System.Collections.Generic;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
+
+public class LineageVisitor : TSqlFragmentVisitor
+{
+    private string procedureName = "UNKNOWN";
+
+    // alias → (schema, table)
+    private Dictionary<string, (string Schema, string Table)> tableAliases =
+        new Dictionary<string, (string, string)>(StringComparer.OrdinalIgnoreCase);
+
+    public List<string> Results = new List<string>();
+
+    public override void Visit(CreateProcedureStatement node)
+    {
+        procedureName = node.ProcedureReference.Name.BaseIdentifier.Value;
+        tableAliases.Clear();
+        base.Visit(node);
+    }
+
+    public override void Visit(NamedTableReference node)
+    {
+        string schema = "unknown";
+        string table = "unknown";
+
+        if (node.SchemaObject != null)
+        {
+            var ids = node.SchemaObject.Identifiers;
+
+            if (ids.Count == 2)
+            {
+                schema = ids[0].Value;
+                table = ids[1].Value;
+            }
+            else if (ids.Count == 1)
+            {
+                table = ids[0].Value;
+            }
+        }
+
+        string alias = node.Alias != null ? node.Alias.Value : table;
+        tableAliases[alias] = (schema, table);
+
+        base.Visit(node);
+    }
+
+    public override void Visit(ColumnReferenceExpression node)
+    {
+        var ids = node.MultiPartIdentifier?.Identifiers;
+
+        // alias.column
+        if (ids != null && ids.Count == 2)
+        {
+            string alias = ids[0].Value;
+            string column = ids[1].Value;
+
+            if (tableAliases.ContainsKey(alias))
+            {
+                var t = tableAliases[alias];
+                Results.Add($"{procedureName},{t.Schema},{t.Table},{column}");
+            }
+            else
+            {
+                Results.Add($"{procedureName},unknown,unknown,{alias}.{column}");
+            }
+        }
+        // column only (no table reference)
+        else if (ids != null && ids.Count == 1)
+        {
+            Results.Add($"{procedureName},unknown,unknown,{ids[0].Value}");
+        }
+
+        base.Visit(node);
+    }
+}
