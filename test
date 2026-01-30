@@ -53,28 +53,41 @@ public class LineageVisitor : TSqlFragmentVisitor
 {
     private string procedureName = "UNKNOWN";
 
-    // alias -> (schema, table)
-    private Dictionary<string, (string Schema, string Table)> tableAliases =
-        new Dictionary<string, (string, string)>(StringComparer.OrdinalIgnoreCase);
+    // Stack to support nested queries
+    private Stack<Dictionary<string, (string Schema, string Table)>> aliasScopes =
+        new Stack<Dictionary<string, (string, string)>>();
+
+    // Deduped results
+    private HashSet<string> dedup =
+        new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
     public List<string> Results = new List<string>();
 
     public override void Visit(CreateProcedureStatement node)
     {
         procedureName = node.ProcedureReference.Name.BaseIdentifier.Value;
-        tableAliases.Clear();
         base.Visit(node);
+    }
+
+    // New query block → new alias scope
+    public override void Visit(QuerySpecification node)
+    {
+        aliasScopes.Push(new Dictionary<string, (string, string)>(StringComparer.OrdinalIgnoreCase));
+        base.Visit(node);
+        aliasScopes.Pop();
     }
 
     public override void Visit(NamedTableReference node)
     {
+        if (aliasScopes.Count == 0)
+            return;
+
         string schema = "unknown";
         string table = "unknown";
 
         if (node.SchemaObject != null)
         {
             var ids = node.SchemaObject.Identifiers;
-
             if (ids.Count == 2)
             {
                 schema = ids[0].Value;
@@ -86,10 +99,8 @@ public class LineageVisitor : TSqlFragmentVisitor
             }
         }
 
-        // Alias is ONLY for lookup, never for output
         string alias = node.Alias != null ? node.Alias.Value : table;
-
-        tableAliases[alias] = (schema, table);
+        aliasScopes.Peek()[alias] = (schema, table);
 
         base.Visit(node);
     }
@@ -97,33 +108,42 @@ public class LineageVisitor : TSqlFragmentVisitor
     public override void Visit(ColumnReferenceExpression node)
     {
         var ids = node.MultiPartIdentifier?.Identifiers;
+        if (ids == null)
+            return;
+
+        string schema = "unknown";
+        string table = "unknown";
+        string column;
 
         // alias.column
-        if (ids != null && ids.Count == 2)
+        if (ids.Count == 2)
         {
             string alias = ids[0].Value;
-            string column = ids[1].Value;
+            column = ids[1].Value;
 
-            if (tableAliases.TryGetValue(alias, out var tableInfo))
+            foreach (var scope in aliasScopes)
             {
-                Results.Add(
-                    $"{procedureName},{tableInfo.Schema},{tableInfo.Table},{column}"
-                );
-            }
-            else
-            {
-                Results.Add(
-                    $"{procedureName},unknown,unknown,{column}"
-                );
+                if (scope.TryGetValue(alias, out var tbl))
+                {
+                    schema = tbl.Schema;
+                    table = tbl.Table;
+                    break;
+                }
             }
         }
         // column only
-        else if (ids != null && ids.Count == 1)
+        else if (ids.Count == 1)
         {
-            Results.Add(
-                $"{procedureName},unknown,unknown,{ids[0].Value}"
-            );
+            column = ids[0].Value;
         }
+        else
+        {
+            return;
+        }
+
+        string row = $"{procedureName},{schema},{table},{column}";
+        if (dedup.Add(row))
+            Results.Add(row);
 
         base.Visit(node);
     }
