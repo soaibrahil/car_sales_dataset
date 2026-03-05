@@ -1,36 +1,26 @@
-Developing ETL Check Job on Table Basis	2667	6.00	2/16/2026	Developing ETL Check Job Checking for individual table Status
-Code Optimization	2667	2.00	2/16/2026	Code Optimization
-QIP Weekly Meeting	2667	1.00	2/17/2026	QIP Weekly Meeting
-Healthlink Change Meeting	2667	1.00	2/17/2026	HealthLink CAB Meeting
-Triage Call	2667	1.00	2/17/2026	Triage calls
-Developing ETL Check Job on Table Basis	2667	5.00	2/17/2026	Developing ETL Check Job Checking for individual table Status
-Triage Call	2667	1.00	2/18/2026	Triage calls
-Healthlink Change Meeting	2667	1.00	2/18/2026	HealthLink CAB Meeting
-Technical Meeting	2667	1.00	2/18/2026	Technical Meeting
-Code Optimization	2667	5.00	2/18/2026	Code Optimization
-Testing ETL Check Job on Table Basis	2667	7.00	2/19/2026	Developing ETL Check Job Checking for individual table Status
-Triage Call	2667	1.00	2/19/2026	Triage calls
-Admin tasks	2667	2.00	2/20/2026	Admin tasks
-Job Run Analysis	2667	2.00	2/20/2026	Job Run Analysis
-SSIS WireFrame Package Development For New ETL Process	2667	3.00	2/20/2026	SSIS WireFrame Package Development For New ETL Process
-Triage Call	2667	1.00	2/20/2026	Triage calls
+using System;
+using System.IO;
+using System.Text;
+using Microsoft.SqlServer.Dts.Runtime;
 
+public void Main()
+{
+    try
+    {
+        string inputFile = Dts.Variables["User::InputFile"].Value.ToString();
+        string outputFile = Dts.Variables["User::OutputFile"].Value.ToString();
 
+        // Read file as UTF-8
+        string content = File.ReadAllText(inputFile, Encoding.UTF8);
 
-SSIS WireFrame Package Deployment 	2667	5.00	2/23/2026	SSIS WireFrame Package Deployment 
-QIP Weekly Meeting	2667	1.00	2/23/2026	QIP Weekly Meeting
-Infrastructure Meeting	2667	1.00	2/23/2026	Infrastructure Meeting
-Healthlink Change Meeting	2667	1.00	2/23/2026	HealthLink CAB Meeting
-Monthly Analytics	2667	1.00	2/24/2026	Monthly Analytics
-Triage Call	2667	1.00	2/24/2026	Triage calls
-Healthlink Change Meeting	2667	1.00	2/24/2026	HealthLink CAB Meeting
-Developing and Testing Scheduled Batch and its Dependencies 	2667	5.00	2/24/2026	Developing and Testing Scheduled Batch and its Dependencies 
-Triage Call	2667	1.00	2/25/2026	Triage calls
-Healthlink Change Meeting	2667	1.00	2/25/2026	HealthLink CAB Meeting
-Developing and Testing Scheduled Batch and its Dependencies 	2667	6.00	2/25/2026	Developing and Testing Scheduled Batch and its Dependencies 
-Triage Call	2667	1.00	2/26/2026	Triage calls
-Code Optimization	2667	7.00	2/26/2026	Code Optimization
-Admin tasks	2667	2.00	2/27/2026	Admin tasks
-Job Run Analysis	2667	2.00	2/27/2026	Job Run Analysis
-Code Optimization	2667	3.00	2/27/2026	Code Optimization
-Triage Call	2667	1.00	2/27/2026	Triage calls
+        // Write file as ANSI (Windows-1252)
+        File.WriteAllText(outputFile, content, Encoding.GetEncoding(1252));
+
+        Dts.TaskResult = (int)ScriptResults.Success;
+    }
+    catch (Exception ex)
+    {
+        Dts.Events.FireError(0, "Encoding Conversion", ex.Message, "", 0);
+        Dts.TaskResult = (int)ScriptResults.Failure;
+    }
+}
