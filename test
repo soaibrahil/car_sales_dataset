@@ -1,26 +1,66 @@
-using System;
-using System.IO;
-using System.Text;
-using Microsoft.SqlServer.Dts.Runtime;
+$folder = "C:\SSIS\Solution"
 
-public void Main()
-{
-    try
-    {
-        string inputFile = Dts.Variables["User::InputFile"].Value.ToString();
-        string outputFile = Dts.Variables["User::OutputFile"].Value.ToString();
+$results = @()
 
-        // Read file as UTF-8
-        string content = File.ReadAllText(inputFile, Encoding.UTF8);
+Get-ChildItem $folder -Filter *.dtsx -Recurse | ForEach-Object {
 
-        // Write file as ANSI (Windows-1252)
-        File.WriteAllText(outputFile, content, Encoding.GetEncoding(1252));
+    $file = $_.FullName
+    [xml]$pkg = Get-Content $file
 
-        Dts.TaskResult = (int)ScriptResults.Success;
-    }
-    catch (Exception ex)
-    {
-        Dts.Events.FireError(0, "Encoding Conversion", ex.Message, "", 0);
-        Dts.TaskResult = (int)ScriptResults.Failure;
+    # Namespace handling
+    $ns = New-Object System.Xml.XmlNamespaceManager($pkg.NameTable)
+    $ns.AddNamespace("DTS","www.microsoft.com/SqlServer/Dts")
+
+    # -----------------------------
+    # Get Flat File Connection Info
+    # -----------------------------
+    $flatConn = $pkg.SelectNodes("//DTS:ConnectionManager[contains(@DTS:CreationName,'FLATFILE')]", $ns)
+
+    foreach ($conn in $flatConn) {
+
+        $connName = $conn.DTS:ObjectName
+        $connString = $conn.DTS:ConnectionManager.DTS:Property |
+            Where-Object { $_.DTS:Name -eq "ConnectionString" } |
+            Select-Object -ExpandProperty '#text'
+
+        $columnDelimiter = $conn.DTS:ConnectionManager.DTS:Property |
+            Where-Object { $_.DTS:Name -eq "ColumnDelimiter" } |
+            Select-Object -ExpandProperty '#text'
+
+        $textQualifier = $conn.DTS:ConnectionManager.DTS:Property |
+            Where-Object { $_.DTS:Name -eq "TextQualifier" } |
+            Select-Object -ExpandProperty '#text'
+
+        $filePath = [System.IO.Path]::GetDirectoryName($connString)
+        $fileName = [System.IO.Path]::GetFileName($connString)
+
+        # --------------------------------
+        # Get OLE DB Source inside Dataflow
+        # --------------------------------
+        $oledbSources = $pkg.SelectNodes("//component[@componentClassID='{165A526D-D5DE-47FF-96A6-F8274C19826A}']")
+
+        foreach ($src in $oledbSources) {
+
+            $connMgr = $src.connections.connection |
+                Where-Object { $_.name -eq "OleDbConnection" } |
+                Select-Object -ExpandProperty connectionManagerID
+
+            $sqlVar = $src.properties.property |
+                Where-Object { $_.name -eq "SqlCommandVariable" } |
+                Select-Object -ExpandProperty '#text'
+
+            $results += [PSCustomObject]@{
+                Package              = $_.Name
+                OLEDBConnection      = $connMgr
+                SQLVariable          = $sqlVar
+                FlatFileConnection   = $connName
+                FilePath             = $filePath
+                FileName             = $fileName
+                ColumnDelimiter      = $columnDelimiter
+                TextQualifier        = $textQualifier
+            }
+        }
     }
 }
+
+$results | Export-Csv "ssis_metadata_output.csv" -NoTypeInformation
