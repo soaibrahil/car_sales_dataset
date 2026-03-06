@@ -1,91 +1,95 @@
-$folder = "C:\SSIS\Packages"   # folder containing dtsx files
-$output = "C:\SSIS\ssis_inventory.csv"
+$folder = "C:\SSIS\SolutionFolder"
+$output = "C:\SSIS\ssis_lineage_report.csv"
 
 $results = @()
 
-Get-ChildItem $folder -Filter *.dtsx -Recurse | ForEach-Object {
+$files = Get-ChildItem $folder -Filter *.dtsx -Recurse
 
-    $file = $_.FullName
-    Write-Host "Processing $file"
+foreach ($file in $files) {
 
-    [xml]$xml = Get-Content $file
+    [xml]$xml = Get-Content $file.FullName
 
     $ns = New-Object System.Xml.XmlNamespaceManager($xml.NameTable)
     $ns.AddNamespace("DTS","www.microsoft.com/SqlServer/Dts")
 
-    $packageName = $_.BaseName
+    $packageName = $file.Name
 
-    # -----------------------------
-    # Source DB Connection
-    # -----------------------------
-    $srcConnNode = $xml.SelectSingleNode("//connection/@connectionManagerRefId",$ns)
-    $srcConn = $null
+    # --------------------------
+    # Get Stored Procedure
+    # --------------------------
 
-    if($srcConnNode){
-        if($srcConnNode.Value -match "\[(.*?)\]"){
+    $sp = ""
+    $varNodes = $xml.SelectNodes("//DTS:Variable/DTS:VariableValue",$ns)
+
+    foreach ($node in $varNodes) {
+
+        if ($node.'#text' -match "EXEC\s+\[?dbo\]?\.\[?([a-zA-Z0-9_]+)\]?") {
+            $sp = $matches[1]
+            break
+        }
+    }
+
+    # --------------------------
+    # Get Source DB Connection
+    # --------------------------
+
+    $srcConn = ""
+
+    $connNode = $xml.SelectSingleNode("//connections/connection/@connectionManagerRefId",$ns)
+
+    if($connNode){
+        if ($connNode.Value -match "\[(.*?)\]"){
             $srcConn = $matches[1]
         }
     }
 
-    # -----------------------------
-    # Flat File Connection Manager
-    # -----------------------------
-    $flatConn = $xml.SelectSingleNode("//DTS:ConnectionManager[@DTS:CreationName='FLATFILE']", $ns)
+    # --------------------------
+    # Flat File Connection
+    # --------------------------
 
     $filePath = ""
     $fileName = ""
     $delimiter = ""
     $textQualifier = ""
 
+    $flatConn = $xml.SelectSingleNode("//DTS:ConnectionManager[@DTS:CreationName='FLATFILE']", $ns)
+
     if($flatConn){
 
-        $connStr = $flatConn.SelectSingleNode(".//DTS:ConnectionString",$ns)
+        $connStr = $flatConn.SelectSingleNode(".//DTS:ObjectData//DTS:ConnectionManager/@DTS:ConnectionString",$ns)
 
         if($connStr){
-            $fullPath = $connStr.InnerText.Trim('"')
-            $filePath = Split-Path $fullPath
-            $fileName = Split-Path $fullPath -Leaf
+            $full = $connStr.Value.Trim('"')
+
+            $filePath = Split-Path $full
+            $fileName = Split-Path $full -Leaf
         }
 
-        $delimiterNode = $flatConn.SelectSingleNode(".//DTS:FlatFileColumn/@DTS:ColumnDelimiter",$ns)
-        if($delimiterNode){
-            $delimiter = $delimiterNode.Value
+        $delNode = $flatConn.SelectSingleNode(".//DTS:FlatFileColumn/@DTS:ColumnDelimiter",$ns)
+
+        if($delNode){
+            $delimiter = $delNode.Value
         }
 
-        $qualNode = $flatConn.SelectSingleNode(".//DTS:ConnectionManager/@DTS:TextQualifier",$ns)
+        $qualNode = $flatConn.SelectSingleNode(".//DTS:ObjectData//DTS:ConnectionManager/@DTS:TextQualifier",$ns)
+
         if($qualNode){
             $textQualifier = $qualNode.Value
         }
     }
 
-    # -----------------------------
-    # Variables (SQL commands)
-    # -----------------------------
-    $variables = $xml.SelectNodes("//DTS:Variable",$ns)
+    # Decode SSIS delimiter encoding
+    if($delimiter -eq "_x007C_"){ $delimiter = "|" }
+    if($delimiter -eq "_x0009_"){ $delimiter = "TAB" }
 
-    $sqlText = ""
-    $variableName = ""
-
-    foreach($var in $variables){
-
-        $valueNode = $var.SelectSingleNode(".//DTS:VariableValue",$ns)
-
-        if($valueNode){
-            $val = $valueNode.InnerText
-
-            if($val -match "EXEC\s+\[?dbo\]?\.\[?(\w+)\]?"){
-                $sqlText = $matches[0]
-                $variableName = $var.Attributes["DTS:ObjectName"].Value
-                break
-            }
-        }
-    }
+    # --------------------------
+    # Add result row
+    # --------------------------
 
     $results += [PSCustomObject]@{
-        Package = $packageName
-        SourceConnection = $srcConn
-        SQLVariable = $variableName
-        StoredProcedure = $sqlText
+        PackageName = $packageName
+        SourceDBConnection = $srcConn
+        StoredProcedure = $sp
         FilePath = $filePath
         FileName = $fileName
         ColumnDelimiter = $delimiter
@@ -96,4 +100,4 @@ Get-ChildItem $folder -Filter *.dtsx -Recurse | ForEach-Object {
 
 $results | Export-Csv $output -NoTypeInformation
 
-Write-Host "Done. Output file: $output"
+Write-Host "Report generated: $output"
