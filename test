@@ -1,66 +1,209 @@
-$folder = "C:\SSIS\Solution"
+<#
+.SYNOPSIS
+    Parses SSIS .dtsx files and extracts key configuration details.
+.DESCRIPTION
+    Reads all .dtsx files in a given folder and extracts:
+      - Source DB Connection Manager name (OLE DB Source)
+      - Stored Procedure name (from SQL command variable)
+      - Flat File destination path (split into folder + filename)
+      - Column delimiter
+      - Text qualifier
+.PARAMETER SolutionPath
+    Path to the folder containing .dtsx files (searches recursively).
+.EXAMPLE
+    .\Parse-SSIS.ps1 -SolutionPath "C:\MySSISProject"
+#>
 
-$results = @()
+param(
+    [Parameter(Mandatory = $true)]
+    [string]$SolutionPath
+)
 
-Get-ChildItem $folder -Filter *.dtsx -Recurse | ForEach-Object {
+# ── Helpers ──────────────────────────────────────────────────────────────────
 
-    $file = $_.FullName
-    [xml]$pkg = Get-Content $file
-
-    # Namespace handling
-    $ns = New-Object System.Xml.XmlNamespaceManager($pkg.NameTable)
-    $ns.AddNamespace("DTS","www.microsoft.com/SqlServer/Dts")
-
-    # -----------------------------
-    # Get Flat File Connection Info
-    # -----------------------------
-    $flatConn = $pkg.SelectNodes("//DTS:ConnectionManager[contains(@DTS:CreationName,'FLATFILE')]", $ns)
-
-    foreach ($conn in $flatConn) {
-
-        $connName = $conn.DTS:ObjectName
-        $connString = $conn.DTS:ConnectionManager.DTS:Property |
-            Where-Object { $_.DTS:Name -eq "ConnectionString" } |
-            Select-Object -ExpandProperty '#text'
-
-        $columnDelimiter = $conn.DTS:ConnectionManager.DTS:Property |
-            Where-Object { $_.DTS:Name -eq "ColumnDelimiter" } |
-            Select-Object -ExpandProperty '#text'
-
-        $textQualifier = $conn.DTS:ConnectionManager.DTS:Property |
-            Where-Object { $_.DTS:Name -eq "TextQualifier" } |
-            Select-Object -ExpandProperty '#text'
-
-        $filePath = [System.IO.Path]::GetDirectoryName($connString)
-        $fileName = [System.IO.Path]::GetFileName($connString)
-
-        # --------------------------------
-        # Get OLE DB Source inside Dataflow
-        # --------------------------------
-        $oledbSources = $pkg.SelectNodes("//component[@componentClassID='{165A526D-D5DE-47FF-96A6-F8274C19826A}']")
-
-        foreach ($src in $oledbSources) {
-
-            $connMgr = $src.connections.connection |
-                Where-Object { $_.name -eq "OleDbConnection" } |
-                Select-Object -ExpandProperty connectionManagerID
-
-            $sqlVar = $src.properties.property |
-                Where-Object { $_.name -eq "SqlCommandVariable" } |
-                Select-Object -ExpandProperty '#text'
-
-            $results += [PSCustomObject]@{
-                Package              = $_.Name
-                OLEDBConnection      = $connMgr
-                SQLVariable          = $sqlVar
-                FlatFileConnection   = $connName
-                FilePath             = $filePath
-                FileName             = $fileName
-                ColumnDelimiter      = $columnDelimiter
-                TextQualifier        = $textQualifier
-            }
-        }
+function Decode-Delimiter {
+    param([string]$raw)
+    switch ($raw) {
+        "_x007C_" { return "|"  }
+        "_x0009_" { return "`t" }
+        "_x002C_" { return ","  }
+        "_x0020_" { return " "  }
+        ""         { return ""   }
+        default    { return $raw }
     }
 }
 
-$results | Export-Csv "ssis_metadata_output.csv" -NoTypeInformation
+function Decode-TextQualifier {
+    param([string]$raw)
+    # _x003C_none_x003E_  means <none>
+    if ($raw -match "_x003C_none_x003E_" -or $raw -eq "_x003C_none_x003E_") {
+        return "<none>"
+    }
+    switch ($raw) {
+        '_x0022_' { return '"' }
+        "_x0027_" { return "'" }
+        default   { return $raw }
+    }
+}
+
+function HtmlDecode-Simple {
+    param([string]$s)
+    $s = $s -replace '&quot;', '"'
+    $s = $s -replace '&amp;',  '&'
+    $s = $s -replace '&lt;',   '<'
+    $s = $s -replace '&gt;',   '>'
+    $s = $s -replace '&#xA;',  "`n"
+    return $s
+}
+
+# ── Main ──────────────────────────────────────────────────────────────────────
+
+$dtsxFiles = Get-ChildItem -Path $SolutionPath -Filter "*.dtsx" -Recurse
+
+if (-not $dtsxFiles) {
+    Write-Warning "No .dtsx files found under: $SolutionPath"
+    exit
+}
+
+$results = @()
+
+foreach ($file in $dtsxFiles) {
+
+    Write-Host "Processing: $($file.Name)" -ForegroundColor Cyan
+
+    [xml]$xml = Get-Content -Path $file.FullName -Encoding UTF8
+
+    $ns = @{
+        DTS  = "www.microsoft.com/SqlServer/Dts"
+        pipe = "www.microsoft.com/SqlServer/Dts/Pipeline"
+    }
+
+    $row = [ordered]@{
+        FileName            = $file.Name
+        FilePath            = $file.FullName
+        SourceDBConnection  = ""
+        StoredProcedure     = ""
+        DestFolder          = ""
+        DestFileName        = ""
+        ColumnDelimiter     = ""
+        TextQualifier       = ""
+    }
+
+    # ── 1. Flat File Connection Manager ──────────────────────────────────────
+    $flatFileCM = $xml.SelectNodes(
+        "//DTS:ConnectionManager[DTS:ObjectData/DTS:ConnectionManager[@DTS:Format='Delimited']]",
+        (New-Object System.Xml.XmlNamespaceManager($xml.NameTable)).
+            GetType().GetMethod("Add") | Out-Null
+    )
+
+    # Build a proper namespace manager
+    $nsMgr = New-Object System.Xml.XmlNamespaceManager($xml.NameTable)
+    $nsMgr.AddNamespace("DTS", "www.microsoft.com/SqlServer/Dts")
+
+    $flatFileCMs = $xml.SelectNodes(
+        "//DTS:ConnectionManager/DTS:ObjectData/DTS:ConnectionManager[@DTS:Format='Delimited']",
+        $nsMgr
+    )
+
+    if ($flatFileCMs.Count -gt 0) {
+        $ff = $flatFileCMs[0]
+
+        # Connection string holds the full file path
+        $connStr = $ff.GetAttribute("ConnectionString", "www.microsoft.com/SqlServer/Dts")
+        if ([string]::IsNullOrEmpty($connStr)) {
+            # May be set via property expression; grab the raw attribute
+            $connStr = $ff.GetAttribute("DTS:ConnectionString")
+        }
+
+        if ($connStr) {
+            $row.DestFolder   = Split-Path $connStr -Parent
+            $row.DestFileName = Split-Path $connStr -Leaf
+        }
+
+        # Column delimiter
+        $rawDelim = $ff.GetAttribute("RowDelimiter", "www.microsoft.com/SqlServer/Dts")
+        if ([string]::IsNullOrEmpty($rawDelim)) {
+            # Look at the first FlatFileColumn for ColumnDelimiter
+            $firstCol = $ff.SelectSingleNode("DTS:FlatFileColumns/DTS:FlatFileColumn", $nsMgr)
+            if ($firstCol) {
+                $rawDelim = $firstCol.GetAttribute("ColumnDelimiter", "www.microsoft.com/SqlServer/Dts")
+            }
+        }
+        $row.ColumnDelimiter = Decode-Delimiter $rawDelim
+
+        # Text qualifier
+        $rawQual = $ff.GetAttribute("TextQualifier", "www.microsoft.com/SqlServer/Dts")
+        $row.TextQualifier = Decode-TextQualifier $rawQual
+    }
+
+    # ── 2. SQL Variable – extract stored procedure name ───────────────────────
+    $variables = $xml.SelectNodes("//DTS:Variable", $nsMgr)
+    foreach ($var in $variables) {
+        $varVal = $var.SelectSingleNode("DTS:VariableValue", $nsMgr)
+        if ($varVal) {
+            $rawText = HtmlDecode-Simple $varVal.InnerText.Trim()
+            # Match:  EXEC [schema].[ProcName]   or  EXEC schema.ProcName
+            if ($rawText -match "(?i)EXEC\s+(\[?\w+\]?\.\[?[\w]+\]?)") {
+                $row.StoredProcedure = $Matches[1]
+                break
+            }
+        }
+
+        # Also check DTS:Expression attribute (encoded)
+        $exprAttr = $var.GetAttribute("Expression", "www.microsoft.com/SqlServer/Dts")
+        if ($exprAttr) {
+            $decoded = HtmlDecode-Simple $exprAttr
+            if ($decoded -match "(?i)EXEC\s+(\[?\w+\]?\.\[?[\w]+\]?)") {
+                $row.StoredProcedure = $Matches[1]
+                break
+            }
+        }
+    }
+
+    # ── 3. OLE DB Source – source connection manager name ────────────────────
+    # The pipeline XML is embedded inside a CDATA / InnerXml of a component node.
+    # We need to find the pipeline task and parse its XML.
+    $execNodes = $xml.SelectNodes("//DTS:Executable", $nsMgr)
+
+    foreach ($exec in $execNodes) {
+        $innerXmlStr = $exec.InnerXml
+        # Look for component with componentClassID containing OleDbSource
+        if ($innerXmlStr -notmatch "OleDbSource|Microsoft\.OLEDBSource") { continue }
+
+        # Parse the embedded pipeline XML
+        try {
+            [xml]$pipeXml = "<root>$innerXmlStr</root>"
+        } catch { continue }
+
+        # Find connection nodes inside the OLE DB source component
+        $components = $pipeXml.SelectNodes("//*[local-name()='component']")
+        foreach ($comp in $components) {
+            $classId = $comp.GetAttribute("componentClassID")
+            if ($classId -notmatch "OleDb|OLEDB") { continue }
+
+            $connNodes = $comp.SelectNodes(".//*[local-name()='connection']")
+            foreach ($cn in $connNodes) {
+                $cmRefId = $cn.GetAttribute("connectionManagerRefId")
+                # Extract the connection manager name from e.g.
+                # "Project.ConnectionManagers[HLCLARITYPRD_CODEREP]"
+                if ($cmRefId -match "\[(.+?)\]") {
+                    $row.SourceDBConnection = $Matches[1]
+                    break
+                }
+            }
+            if ($row.SourceDBConnection) { break }
+        }
+        if ($row.SourceDBConnection) { break }
+    }
+
+    $results += [PSCustomObject]$row
+}
+
+# ── Output ────────────────────────────────────────────────────────────────────
+
+$results | Format-Table -AutoSize
+
+# Export to CSV alongside the script
+$csvPath = Join-Path $SolutionPath "SSIS_Extract_$(Get-Date -Format 'yyyyMMdd_HHmmss').csv"
+$results | Export-Csv -Path $csvPath -NoTypeInformation -Encoding UTF8
+Write-Host "`nResults exported to: $csvPath" -ForegroundColor Green
