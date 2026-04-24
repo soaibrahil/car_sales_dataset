@@ -1,27 +1,16 @@
-public void Main()
-{
-    bool fireAgain = false;
-
-    try
-    {
-        string filePath = Dts.Variables["User::FilePath"].Value.ToString();
-
-        Encoding ansiEncoding = Encoding.GetEncoding(1252);
-
-        using (StreamWriter sw = new StreamWriter(filePath, false, ansiEncoding))
-        {
-            // Write nothing — just creates the file with ANSI encoding
-        }
-
-        Dts.Events.FireInformation(0, "Script Task",
-            "ANSI file created successfully at: " + filePath, "", 0, ref fireAgain);
-
-        Dts.TaskResult = (int)ScriptResults.Success;
-    }
-    catch (Exception ex)
-    {
-        Dts.Events.FireError(0, "Script Task",
-            "Error creating file: " + ex.Message, "", 0);
-        Dts.TaskResult = (int)ScriptResults.Failure;
-    }
-}
+QIP Weekly Meeting	2667	1.00	4/13/2026	QIP Weekly Meeting
+Infrastructure Meeting	2667	1.00	4/13/2026	Infrastructure Meeting
+Healthlink Change Meeting	2667	1.00	4/13/2026	HealthLink CAB Meeting
+Monthly Analytics	2667	1.00	3/16/2026	Monthly Analytics
+CMQCC Sync	2667	4.00	4/13/2026	CMQCC Sync
+Triage Call	2667	1.00	4/14/2026	Triage calls
+Code Optimization	2667	7.00	4/14/2026	Code Optimization
+Triage Call	2667	1.00	4/15/2026	Triage calls
+Healthlink Change Meeting	2667	1.00	4/15/2026	HealthLink CAB Meeting
+Code Optimization	2667	6.00	4/15/2026	Code Optimization
+Update QIP ValueSet and Medication File 	2667	7.00	4/16/2026	Update QIP ValueSet and Medication File 
+Triage Call	2667	1.00	4/16/2026	Triage calls
+Admin tasks	2667	2.00	4/17/2026	Admin tasks
+Job Run Analysis	2667	2.00	4/17/2026	Job Run Analysis
+Code Optimization	2667	3.00	4/17/2026	Code Optimization
+Triage Call	2667	1.00	4/17/2026	Triage calls
